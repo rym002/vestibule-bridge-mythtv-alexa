@@ -30,16 +30,15 @@ export default class FrontendVideoPlayer
             TitleRegEx: searchTitles
         });
         const programs = foundPrograms.Programs;
-        sortBy(programs, [
-            (program: Program) => (program.Season),
-            (program: Program) => (program.Episode),
-            (program: Program) => (program.Airdate)
-        ])
+        const filteredPrograms = sortBy(programs, [
+            (program: Program) => Number(program.Season),
+            (program: Program) => Number(program.Episode),
+            (program: Program) => program.Airdate
+        ]).filter(program => (
+            (searchCriteria.Season == undefined || searchCriteria.Season.includes(program.Season))
+            &&
+            (searchCriteria.Episode == undefined || searchCriteria.Episode.includes(program.Episode))
 
-        const filteredPrograms = programs.filter(program => (
-            (searchCriteria.Season == undefined && searchCriteria.Episode == undefined)
-            || (searchCriteria.Season.includes(program.Season)
-                && searchCriteria.Episode.includes(program.Episode))
         ))
         if (filteredPrograms.length > 0) {
             return filteredPrograms[0].Recording.RecordedId
@@ -52,9 +51,9 @@ export default class FrontendVideoPlayer
         const filteredVideos = videoInfos.filter(videoInfo => (
             searchCriteria.Video && searchCriteria.Video.includes(videoInfo.Title)
             && (
-                (searchCriteria.Season == undefined && searchCriteria.Episode == undefined)
-                || (searchCriteria.Season.includes(videoInfo.Season)
-                    && searchCriteria.Episode.includes(videoInfo.Episode))
+                (searchCriteria.Season == undefined || searchCriteria.Season.includes(videoInfo.Season))
+                &&
+                (searchCriteria.Episode == undefined || searchCriteria.Episode.includes(videoInfo.Episode))
             )
         ))
         if (filteredVideos.length > 0) {
@@ -71,9 +70,7 @@ export default class FrontendVideoPlayer
         } else {
             const videoId = await this.findVideoId(searchCriteria);
             if (videoId) {
-                const status = await this.fe.GetStatus();
-                const watching = status.State.state.startsWith('Watching')
-                if (watching) {
+                if (await this.fe.isWatching()) {
                     await this.fe.SendAction({
                         Action: 'STOPPLAYBACK'
                     })
@@ -84,7 +81,8 @@ export default class FrontendVideoPlayer
                         UseBookmark: false
                     })
                 } catch (err) {
-                    if (watching) {
+                    console.error(err)
+                    if (await this.fe.isWatching()) {
                         // Try again if was watching
                         try {
                             await this.fe.PlayVideo({
@@ -92,7 +90,7 @@ export default class FrontendVideoPlayer
                                 UseBookmark: false
                             })
                         } catch (err) {
-                            console.log('Failed to play video')
+                            console.error('Failed to play video')
                         }
                     }
                 }

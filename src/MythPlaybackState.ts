@@ -44,11 +44,10 @@ export default class FrontendPlaybackState
         this.fe.alexaEmitter.emit('capability', DirectiveName, ['playbackState'], deltaId);
     }
     private async playbackState(): Promise<PlaybackStateReporter.States> {
-        const status = await this.fe.GetStatus();
-        const feState = status.State;
-        const isWatching = feState.state.startsWith('Watching');
-        if (isWatching) {
-            if (feState.playspeed == '0') {
+        if (await this.fe.isWatching()) {
+            const status = await this.fe.GetStatus();
+            const feState = status.State;
+                if (feState.playspeed == '0') {
                 return 'PAUSED';
             } else {
                 return 'PLAYING';

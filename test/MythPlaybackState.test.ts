@@ -67,6 +67,7 @@ describe('MythPlaybackState', () => {
             it('should emit PAUSED when watching and playspeed is 0', async () => {
                 const feNock = createFrontendNock('playbackstate')
                     .get('/GetStatus')
+                    .twice()
                     .reply(200, () => {
                         return {
                             FrontendStatus: {
@@ -83,6 +84,7 @@ describe('MythPlaybackState', () => {
             it('should emit PLAYING when watching and playspeed != 0', async () => {
                 const feNock = createFrontendNock('playbackstate')
                     .get('/GetStatus')
+                    .twice()
                     .reply(200, () => {
                         return {
                             FrontendStatus: {

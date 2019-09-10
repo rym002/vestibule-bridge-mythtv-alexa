@@ -32,6 +32,11 @@ class MockAlexaFrontend {
         const state = status.State.state;
         return state == 'WatchingLiveTV';
     }
+    async isWatching(): Promise<boolean> {
+        const status: FrontendStatus = await this.fe.GetStatus();
+        const state = status.State.state;
+        return state.startsWith('Watching');
+    }
     async GetRefreshedStatus(): Promise<FrontendStatus> {
         return this.fe.GetStatus();
     }
