@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import 'mocha';
 import { createSandbox } from 'sinon';
 import Handler from '../src/MythEndpointHealth';
-import { createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, toBool, verifyRefreshCapability, verifyRefreshState, verifyState } from './MockHelper';
+import { createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, toBool, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
 
 
 describe('MythEndpointHealth',()=>{
@@ -24,14 +24,10 @@ describe('MythEndpointHealth',()=>{
             frontend.resetDeltaId()
         })
         it('CLIENT_CONNECTED event should change state to OK', async () => {
-            await verifyState(sandbox, frontend, EndpointHealth.namespace, 'connectivity', 'OK', () => {
-                frontend.mythEventEmitter.emit('CLIENT_CONNECTED', {})
-            })
+            await verifyMythEventState(sandbox, frontend, 'CLIENT_CONNECTED', {},EndpointHealth.namespace, 'connectivity', 'OK')
         })
         it('CLIENT_DISCONNECTED event should change state to UNREACHABLE', async () => {
-            await verifyState(sandbox, frontend, EndpointHealth.namespace, 'connectivity', 'UNREACHABLE', () => {
-                frontend.mythEventEmitter.emit('CLIENT_DISCONNECTED', {})
-            })
+            await verifyMythEventState(sandbox, frontend, 'CLIENT_DISCONNECTED', {},EndpointHealth.namespace, 'connectivity', 'UNREACHABLE')
         })
     })
     context('Alexa Shadow', () => {

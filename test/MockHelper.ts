@@ -12,6 +12,7 @@ import { EndpointCapability, SubType, EndpointState, ResponseMessage } from "@ve
 import { expect } from 'chai'
 import { MemoizedFunction, memoize } from "lodash";
 import { Directive } from "@vestibule-link/alexa-video-skill-types";
+import { EventMapping } from "mythtv-event-emitter/dist/messages";
 
 export interface MockMythAlexaEventFrontend extends MythAlexaEventFrontend {
     resetDeltaId(): void
@@ -132,6 +133,13 @@ export async function verifyRefreshState<NS extends keyof EndpointState, N exten
     })
 }
 
+export async function verifyMythEventState<NS extends keyof EndpointState, N extends keyof EndpointState[NS],T extends keyof EventMapping, P extends EventMapping[T]>(
+    sandbox: SinonSandbox, frontend: MythAlexaEventFrontend, eventType: T, eventMessage: P,
+    expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>) {
+    await verifyState(sandbox, frontend, expectedNamespace, expectedName, expectedState, () => {
+        frontend.mythEventEmitter.emit(eventType, eventMessage)
+    })
+}
 export function toBool(data: boolean): Bool {
     return {
         bool: data + ''

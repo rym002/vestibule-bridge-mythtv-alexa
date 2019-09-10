@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import 'mocha';
 import { createSandbox } from 'sinon';
 import Handler from '../src/MythRecordController';
-import { createBackendNock, createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, verifyActionDirective, verifyRefreshCapability, verifyRefreshState, verifyState } from './MockHelper';
+import { createBackendNock, createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, verifyActionDirective, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
 
 
 describe('MythRecordController', () => {
@@ -87,9 +87,7 @@ describe('MythRecordController', () => {
                         }
                     }
                 })
-            await verifyState(sandbox, frontend, RecordController.namespace, 'RecordingState', 'RECORDING', () => {
-                frontend.mythEventEmitter.emit('SCHEDULER_RAN', {})
-            })
+            await verifyMythEventState(sandbox, frontend, 'SCHEDULER_RAN', {}, RecordController.namespace, 'RecordingState', 'RECORDING')
             expect(feNock.isDone()).to.be.true
             expect(dvrNock.isDone()).to.be.true
 

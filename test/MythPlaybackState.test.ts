@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import 'mocha';
 import { createSandbox } from 'sinon';
 import Handler from '../src/MythPlaybackState';
-import { createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, verifyRefreshCapability, verifyRefreshState, verifyState } from './MockHelper';
+import { createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
 
 describe('MythPlaybackState', () => {
     const sandbox = createSandbox()
@@ -23,39 +23,25 @@ describe('MythPlaybackState', () => {
             frontend.resetDeltaId()
         })
         it('LIVETV_STARTED event should change state to PLAYING', async () => {
-            await verifyState(sandbox, frontend, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING', () => {
-                frontend.mythEventEmitter.emit('LIVETV_STARTED', {})
-            })
+            await verifyMythEventState(sandbox, frontend, 'LIVETV_STARTED', {}, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
         })
         it('PLAY_CHANGED event should change state to PLAYING', async () => {
-            await verifyState(sandbox, frontend, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING', () => {
-                frontend.mythEventEmitter.emit('PLAY_CHANGED', {})
-            })
+            await verifyMythEventState(sandbox, frontend, 'PLAY_CHANGED', {}, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
         })
         it('PLAY_STARTED event should change state to PLAYING', async () => {
-            await verifyState(sandbox, frontend, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING', () => {
-                frontend.mythEventEmitter.emit('PLAY_STARTED', {})
-            })
+            await verifyMythEventState(sandbox, frontend, 'PLAY_STARTED', {}, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
         })
         it('PLAY_UNPAUSED event should change state to PLAYING', async () => {
-            await verifyState(sandbox, frontend, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING', () => {
-                frontend.mythEventEmitter.emit('PLAY_STARTED', {})
-            })
+            await verifyMythEventState(sandbox, frontend, 'PLAY_UNPAUSED', {}, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
         })
         it('PLAY_PAUSED event should change state to PAUSED', async () => {
-            await verifyState(sandbox, frontend, PlaybackStateReporter.namespace, 'playbackState', 'PAUSED', () => {
-                frontend.mythEventEmitter.emit('PLAY_PAUSED', {})
-            })
+            await verifyMythEventState(sandbox, frontend, 'PLAY_PAUSED', {}, PlaybackStateReporter.namespace, 'playbackState', 'PAUSED')
         })
         it('LIVETV_ENDED event should change state to STOPPED', async () => {
-            await verifyState(sandbox, frontend, PlaybackStateReporter.namespace, 'playbackState', 'STOPPED', () => {
-                frontend.mythEventEmitter.emit('LIVETV_ENDED', {})
-            })
+            await verifyMythEventState(sandbox, frontend, 'LIVETV_ENDED', {}, PlaybackStateReporter.namespace, 'playbackState', 'STOPPED')
         })
         it('PLAY_STOPPED event should change state to STOPPED', async () => {
-            await verifyState(sandbox, frontend, PlaybackStateReporter.namespace, 'playbackState', 'STOPPED', () => {
-                frontend.mythEventEmitter.emit('PLAY_STOPPED', {})
-            })
+            await verifyMythEventState(sandbox, frontend, 'PLAY_STOPPED', {}, PlaybackStateReporter.namespace, 'playbackState', 'STOPPED')
         })
     })
     context('Alexa Shadow', () => {

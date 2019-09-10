@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import 'mocha';
 import { createSandbox } from 'sinon';
 import Handler from '../src/MythPowerController';
-import { createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, toBool, verifyRefreshCapability, verifyRefreshState, verifyState } from './MockHelper';
+import { createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, toBool, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
 
 
 describe('MythPowerController', () => {
@@ -24,14 +24,10 @@ describe('MythPowerController', () => {
             frontend.resetDeltaId()
         })
         it('CLIENT_CONNECTED event should change state to ON', async () => {
-            await verifyState(sandbox, frontend, PowerController.namespace, 'powerState', 'ON', () => {
-                frontend.mythEventEmitter.emit('CLIENT_CONNECTED', {})
-            })
+            await verifyMythEventState(sandbox, frontend, 'CLIENT_CONNECTED', {}, PowerController.namespace, 'powerState', 'ON')
         })
         it('CLIENT_DISCONNECTED event should change state to OFF', async () => {
-            await verifyState(sandbox, frontend, PowerController.namespace, 'powerState', 'OFF', () => {
-                frontend.mythEventEmitter.emit('CLIENT_DISCONNECTED', {})
-            })
+            await verifyMythEventState(sandbox, frontend, 'CLIENT_DISCONNECTED', {}, PowerController.namespace, 'powerState', 'OFF')
         })
     })
     context('Alexa Shadow', () => {
@@ -41,7 +37,7 @@ describe('MythPowerController', () => {
         })
         context('refreshState', () => {
             it('should emit ON when success response', async () => {
-                const feNock = createFrontendNock('power')
+                const feNock = createFrontendNock(frontend.hostname())
                     .post('/SendAction')
                     .query({
                         Action: 'FAKE'
@@ -52,7 +48,7 @@ describe('MythPowerController', () => {
                 expect(feNock.isDone()).to.be.true
 
             })
-            it('should emit OFF when failed response',async ()=>{
+            it('should emit OFF when failed response', async () => {
                 await verifyRefreshState(sandbox, frontend, PowerController.namespace, 'powerState', 'OFF')
             })
         })
