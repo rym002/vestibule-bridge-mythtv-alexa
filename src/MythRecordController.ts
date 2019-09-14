@@ -68,13 +68,13 @@ export default class FrontendRecord
             const status = await this.fe.GetStatus();
             const state = status.State;
             const encoders = await backend.dvrService.GetEncoderList();
-            const watchingLiveTV = encoders.filter(encoder => {
+            const notWatchingLiveTV = encoders.filter(encoder => {
                 return encoder.Connected
+                    && encoder.Recording.Recording.RecGroup !== 'LiveTV'
                     && encoder.Recording.Channel.ChanId == state.chanid
-                    && encoder.Recording.Recording.RecGroup != 'LiveTV'
-                    && encoder.Recording.ProgramId == state.programid;
+                    && encoder.Recording.ProgramId === state.programid;
             })
-            if (watchingLiveTV.length > 0) {
+            if (notWatchingLiveTV.length > 0) {
                 return 'RECORDING';
             }
         }

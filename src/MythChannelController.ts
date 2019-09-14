@@ -46,13 +46,18 @@ export default class FrontendChannel
         const channelMetadata = payload.channelMetadata;
         const currentChannel = await this.state();
         let chanNum = channel.number;
+        const channelLookup = await ChannelLookup.instance();
         if (!chanNum) {
-            if (channelMetadata.name) {
-                chanNum = ChannelLookup.instance.searchChannel(channelMetadata.name);
+            if (channelMetadata && channelMetadata.name) {
+                chanNum = channelLookup.searchChannelName(channelMetadata.name);
             } else if (channel.affiliateCallSign) {
-                chanNum = ChannelLookup.instance.searchChannel(channel.affiliateCallSign);
+                chanNum = channelLookup.searchCallSign(channel.affiliateCallSign);
             } else if (channel.callSign) {
-                chanNum = ChannelLookup.instance.searchChannel(channel.callSign);
+                chanNum = channelLookup.searchCallSign(channel.callSign);
+            }
+        } else {
+            if (!channelLookup.isValidChanNum(chanNum)) {
+                chanNum = undefined;
             }
         }
 
@@ -76,7 +81,8 @@ export default class FrontendChannel
         const channelCount = payload.channelCount
         const currentChannel = await this.state();
         if (currentChannel) {
-            const nextChannel = ChannelLookup.instance.getSkipChannelNum(currentChannel.number, channelCount);
+            const channelLookup = await ChannelLookup.instance();
+            const nextChannel = channelLookup.getSkipChannelNum(currentChannel.number, channelCount);
             if (nextChannel) {
                 await this.sendChannelChange(nextChannel, true);
             } else {
@@ -138,39 +144,37 @@ export default class FrontendChannel
     }
 }
 class FuseOpt implements Fuse.FuseOptions<ChannelInfo> {
-    readonly id = 'ChanNum'
+    readonly includeScore = true
     readonly caseSensitive = false
-    readonly keys: { name: keyof ChannelInfo; weight: number }[] = [
-        {
-            name: 'ChannelName',
-            weight: 0.5
-        }, {
-            name: 'CallSign',
-            weight: 0.3
-        }, {
-            name: 'ChanNum',
-            weight: 0.2
-        }]
+    readonly keys: { name: keyof ChannelInfo; weight: number }[];
     readonly shouldSort = true;
-    readonly tokenize = true;
+    readonly minMatchCharLength = 3;
+    constructor(name: keyof ChannelInfo, readonly tokenize: boolean) {
+        this.keys = [
+            {
+                name: name,
+                weight: 0.01
+            }
+        ]
+    }
 }
 class ChannelLookup {
-    readonly chanNumToIndex = new Map<string, number>();
+    private readonly chanNumToIndex = new Map<string, number>();
+    private readonly callSignToChanNum = new Map<string, string>();
     private channelInfos: ChannelInfo[] | undefined;
-    private fuse: Fuse<ChannelInfo, FuseOpt> | undefined;
-    private fuseOptions = new FuseOpt();
-    private hdSuffixes = ['', 'HD', 'DT'];
+    private channelNameFuse: Fuse<ChannelInfo, FuseOpt> | undefined;
+    private hdSuffixes = ['HD', 'DT', ''];
     private static _instance
     private constructor() {
-        this.refreshChannelMap();
     }
-    static get instance() {
+    static async instance(): Promise<ChannelLookup> {
         if (!this._instance) {
             this._instance = new ChannelLookup();
+            await this._instance.refreshChannelMap();
         }
         return this._instance;
     }
-    private async  refreshChannelMap(): Promise<void> {
+    private async refreshChannelMap(): Promise<void> {
         const videoSources = await backend.channelService.GetVideoSourceList();
         const channelInfoPromises = videoSources.VideoSources.map(async videoSource => {
             return await backend.channelService.GetChannelInfoList({
@@ -184,8 +188,6 @@ class ChannelLookup {
             return channelInfoList.ChannelInfos;
         }).reduce((prev, current) => {
             return prev.concat(current);
-        }).filter(channelInfo => {
-            return channelInfo.Visible;
         }).sort((a, b) => {
             const majorSort = a.ATSCMajorChan - b.ATSCMajorChan;
             if (majorSort == 0) {
@@ -193,38 +195,62 @@ class ChannelLookup {
             }
             return majorSort;
         })
-        this.fuse = new Fuse(this.channelInfos, this.fuseOptions);
+
+        this.channelNameFuse = new Fuse(this.channelInfos, new FuseOpt('ChannelName', true));
         this.chanNumToIndex.clear();
         this.channelInfos.forEach((channelInfo, index) => {
             this.chanNumToIndex.set(channelInfo.ChanNum, index);
+        })
+        this.callSignToChanNum.clear();
+        this.channelInfos.forEach((channelInfo) => {
+            this.callSignToChanNum.set(channelInfo.CallSign, channelInfo.ChanNum);
         })
     }
 
     getSkipChannelNum(chanNum: string, channelCount: number): string | undefined {
         const currentIndex = this.chanNumToIndex.get(chanNum);
-        if (currentIndex) {
+        if (currentIndex != undefined) {
             let nextIndex = currentIndex + channelCount;
-            if (nextIndex > this.channelInfos.length) {
+            if (nextIndex >= this.channelInfos.length) {
                 nextIndex -= this.channelInfos.length;
             } else if (nextIndex < 0) {
                 nextIndex = this.channelInfos.length + nextIndex;
             }
-            return this.channelInfos[nextIndex].ChanNum;
+            if (nextIndex < 0 || nextIndex >= this.channelInfos.length) {
+                return this.getSkipChannelNum(this.channelInfos[0].ChanNum, nextIndex)
+            } else {
+                return this.channelInfos[nextIndex].ChanNum;
+            }
         }
     }
 
     isValidChanNum(chanNum: string): boolean {
         return this.chanNumToIndex.get(chanNum) != undefined;
     }
-    searchChannel(metadata: string): string | undefined {
-        if (!this.isValidChanNum(metadata)) {
-            metadata += this.hdSuffixes.join(' ');
+    searchChannelName(chanName: string): string | undefined {
+        for (let index = 0; index < this.hdSuffixes.length; index++) {
+            const hdSuffix = this.hdSuffixes[index];
+            const chanNum = this.searchChannel(this.channelNameFuse, chanName + ' ' + hdSuffix)
+            if (chanNum) {
+                return chanNum;
+            }
         }
-        const ret = this.fuse.search(metadata, {
+    }
+    searchCallSign(callSign: string): string | undefined {
+        for (let index = 0; index < this.hdSuffixes.length; index++) {
+            const hdSuffix = this.hdSuffixes[index];
+            const chanNum = this.callSignToChanNum.get(callSign + hdSuffix)
+            if (chanNum) {
+                return chanNum;
+            }
+        }
+    }
+    private searchChannel(fuse: Fuse<ChannelInfo, FuseOpt>, search: string): string | undefined {
+        const ret = fuse.search(search, {
             limit: 1
         })
         if (ret.length == 1) {
-            return ret[0];
+            return ret[0].item.ChanNum;
         }
     }
 }

@@ -3,57 +3,47 @@ import { expect } from 'chai';
 import 'mocha';
 import { createSandbox } from 'sinon';
 import Handler from '../src/MythEndpointHealth';
-import { createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, toBool, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
+import { createFrontendNock, createMockFrontend, toBool, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
 
 
-describe('MythEndpointHealth',()=>{
+describe('MythEndpointHealth', function () {
     const sandbox = createSandbox()
-    let frontend: MockMythAlexaEventFrontend
-    let handler: Handler
-    before(async () => {
-        frontend = await createMockFrontend('endpointhealth');
-        handler = new Handler(frontend)
+    this.beforeEach(async function () {
+        const frontend = await createMockFrontend('endpointhealth');
+        new Handler(frontend)
+        this.currentTest['frontend'] = frontend
     })
-    afterEach(() => {
+    afterEach(function () {
         sandbox.restore()
-        frontend.resetDeltaId()
     })
-    context('MythtTV Events', () => {
-        afterEach(() => {
-            sandbox.restore()
-            frontend.resetDeltaId()
+    context('MythtTV Events', function () {
+        it('CLIENT_CONNECTED event should change state to OK', async function () {
+            await verifyMythEventState(this.test['frontend'], 'CLIENT_CONNECTED', {}, EndpointHealth.namespace, 'connectivity', 'OK')
         })
-        it('CLIENT_CONNECTED event should change state to OK', async () => {
-            await verifyMythEventState(sandbox, frontend, 'CLIENT_CONNECTED', {},EndpointHealth.namespace, 'connectivity', 'OK')
-        })
-        it('CLIENT_DISCONNECTED event should change state to UNREACHABLE', async () => {
-            await verifyMythEventState(sandbox, frontend, 'CLIENT_DISCONNECTED', {},EndpointHealth.namespace, 'connectivity', 'UNREACHABLE')
+        it('CLIENT_DISCONNECTED event should change state to UNREACHABLE', async function () {
+            await verifyMythEventState(this.test['frontend'], 'CLIENT_DISCONNECTED', {}, EndpointHealth.namespace, 'connectivity', 'UNREACHABLE')
         })
     })
-    context('Alexa Shadow', () => {
-        afterEach(() => {
-            sandbox.restore()
-            frontend.resetDeltaId()
-        })
-        context('refreshState', () => {
-            it('should emit OK when success response', async () => {
-                const feNock = createFrontendNock('endpointhealth')
+    context('Alexa Shadow', function () {
+        context('refreshState', function () {
+            it('should emit OK when success response', async function () {
+                const feNock = createFrontendNock(this.test['frontend'].hostname())
                     .post('/SendAction')
                     .query({
                         Action: 'FAKE'
-                    }).reply(200, () => {
+                    }).reply(200, function () {
                         return toBool(true);
                     })
-                await verifyRefreshState(sandbox, frontend, EndpointHealth.namespace, 'connectivity', 'OK')
+                await verifyRefreshState(this.test['frontend'], EndpointHealth.namespace, 'connectivity', 'OK')
                 expect(feNock.isDone()).to.be.true
 
             })
-            it('should emit UNREACHABLE when failed response',async ()=>{
-                await verifyRefreshState(sandbox, frontend, EndpointHealth.namespace, 'connectivity', 'UNREACHABLE')
+            it('should emit UNREACHABLE when failed response', async function () {
+                await verifyRefreshState(this.test['frontend'], EndpointHealth.namespace, 'connectivity', 'UNREACHABLE')
             })
         })
-        it('refreshCapability should emit powerState', async () => {
-            await verifyRefreshCapability(sandbox, frontend, false, EndpointHealth.namespace, ['connectivity'])
+        it('refreshCapability should emit powerState', async function () {
+            await verifyRefreshCapability(sandbox, this.test['frontend'], false, EndpointHealth.namespace, ['connectivity'])
         })
     })
 })

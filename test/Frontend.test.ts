@@ -77,16 +77,16 @@ describe('Frontend', () => {
             });
         nocks.push(mythNock)
 
-        const dvrNock = nock('http://localhost:6544/Dvr').get("/GetEncoderList").reply(200, () => {
-            return {
-                EncoderList: {
-                    Encoders: [{
-                        Id: 1
-                    }]
-                }
-            }
-        });
-        nocks.push(dvrNock)
+        // const dvrNock = nock('http://localhost:6544/Dvr').get("/GetEncoderList").reply(200, () => {
+        //     return {
+        //         EncoderList: {
+        //             Encoders: [{
+        //                 Id: 1
+        //             }]
+        //         }
+        //     }
+        // });
+        // nocks.push(dvrNock)
 
         const feNock = nock('http://hostgood:6547/Frontend')
             .get('/GetStatus').thrice().reply(200, () => {

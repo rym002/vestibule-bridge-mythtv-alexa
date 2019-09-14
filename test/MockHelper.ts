@@ -8,7 +8,7 @@ import { providersEmitter, responseRouter } from "@vestibule-link/bridge-assista
 import { mergeObject } from "@vestibule-link/bridge-mythtv";
 import { registerAssistant } from "@vestibule-link/bridge-assistant-alexa/dist/endpoint";
 import { SinonSandbox, assert, match } from "sinon";
-import { EndpointCapability, SubType, EndpointState, ResponseMessage } from "@vestibule-link/iot-types";
+import { EndpointCapability, SubType, EndpointState, ResponseMessage, DirectiveResponse } from "@vestibule-link/iot-types";
 import { expect } from 'chai'
 import { MemoizedFunction, memoize } from "lodash";
 import { Directive } from "@vestibule-link/alexa-video-skill-types";
@@ -58,6 +58,7 @@ export function createBackendNock(service: string) {
     return nock("http://localhost:6544/" + service)
 }
 export async function createMockFrontend(hostname: string): Promise<MockMythAlexaEventFrontend> {
+    hostname += Date.now()
     const mythNock = createBackendNock('Myth')
         .get('/GetSetting').query({
             Key: 'FrontendStatusPort',
@@ -106,7 +107,7 @@ export async function verifyRefreshCapability<NS extends keyof EndpointCapabilit
     await emitterPromise;
 }
 
-export async function verifyState<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(sandbox: SinonSandbox,
+export async function verifyState<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(
     frontend: MythAlexaEventFrontend, expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>,
     triggerFunction: Function) {
     const emitterPromise = new Promise((resolve, reject) => {
@@ -126,30 +127,31 @@ export async function verifyState<NS extends keyof EndpointState, N extends keyo
     await emitterPromise;
 }
 
-export async function verifyRefreshState<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(sandbox: SinonSandbox,
+export async function verifyRefreshState<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(
     frontend: MythAlexaEventFrontend, expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>) {
-    await verifyState(sandbox, frontend, expectedNamespace, expectedName, expectedState, () => {
+    await verifyState(frontend, expectedNamespace, expectedName, expectedState, () => {
         frontend.alexaEmitter.emit('refreshState', frontend.eventDeltaId())
     })
 }
 
-export async function verifyMythEventState<NS extends keyof EndpointState, N extends keyof EndpointState[NS],T extends keyof EventMapping, P extends EventMapping[T]>(
-    sandbox: SinonSandbox, frontend: MythAlexaEventFrontend, eventType: T, eventMessage: P,
+export async function verifyMythEventState<NS extends keyof EndpointState, N extends keyof EndpointState[NS], T extends keyof EventMapping, P extends EventMapping[T]>(
+    frontend: MythAlexaEventFrontend, eventType: T, eventMessage: P,
     expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>) {
-    await verifyState(sandbox, frontend, expectedNamespace, expectedName, expectedState, () => {
+    await verifyState(frontend, expectedNamespace, expectedName, expectedState, () => {
         frontend.mythEventEmitter.emit(eventType, eventMessage)
     })
 }
 export function toBool(data: boolean): Bool {
     return {
-        bool: data + ''
+        bool: data
     }
 }
 
-export async function verifyActionDirective<NS extends Directive.Namespaces, N extends keyof Directive.NamedMessage[NS]>(
-    sandbox: SinonSandbox, frontend: MythAlexaEventFrontend, namespace: NS, name: N, requestMessage: any,
+export async function verifyActionDirective<NS extends Directive.Namespaces, N extends keyof Directive.NamedMessage[NS], DN extends keyof DirectiveResponse[NS]>(
+    frontend: MythAlexaEventFrontend, namespace: NS, name: N,
+    requestMessage: Directive.NamedMessage[NS][N] extends { payload: any } ? Directive.NamedMessage[NS][N]['payload'] : never,
     expectedMythtvActions: ActionMessage[],
-    expectedResponse: ResponseMessage<any>) {
+    expectedResponse: ResponseMessage<DirectiveResponse[NS][DN] extends { payload: any } ? DirectiveResponse[NS][DN]['payload'] : never>) {
     const messageId = Symbol();
     let frontendNock = createFrontendNock(frontend.hostname())
     expectedMythtvActions.forEach(mythAction => {
@@ -175,7 +177,7 @@ export async function verifyActionDirective<NS extends Directive.Namespaces, N e
     await responsePromise;
 }
 
-interface ActionMessage {
+export interface ActionMessage {
     actionName: string
     response: boolean
 }

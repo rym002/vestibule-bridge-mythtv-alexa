@@ -35,9 +35,9 @@ export default class FrontendVideoPlayer
             (program: Program) => Number(program.Episode),
             (program: Program) => program.Airdate
         ]).filter(program => (
-            (searchCriteria.Season == undefined || searchCriteria.Season.includes(program.Season))
+            (searchCriteria.Season == undefined || searchCriteria.Season.includes(program.Season + ''))
             &&
-            (searchCriteria.Episode == undefined || searchCriteria.Episode.includes(program.Episode))
+            (searchCriteria.Episode == undefined || searchCriteria.Episode.includes(program.Episode + ''))
 
         ))
         if (filteredPrograms.length > 0) {
@@ -51,9 +51,9 @@ export default class FrontendVideoPlayer
         const filteredVideos = videoInfos.filter(videoInfo => (
             searchCriteria.Video && searchCriteria.Video.includes(videoInfo.Title)
             && (
-                (searchCriteria.Season == undefined || searchCriteria.Season.includes(videoInfo.Season))
+                (searchCriteria.Season == undefined || searchCriteria.Season.includes(videoInfo.Season + ''))
                 &&
-                (searchCriteria.Episode == undefined || searchCriteria.Episode.includes(videoInfo.Episode))
+                (searchCriteria.Episode == undefined || searchCriteria.Episode.includes(videoInfo.Episode + ''))
             )
         ))
         if (filteredVideos.length > 0) {

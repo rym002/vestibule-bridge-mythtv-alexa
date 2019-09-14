@@ -4,30 +4,29 @@ import 'mocha';
 import { createSandbox } from 'sinon';
 import { getLocalEndpoint, MANUFACTURER_NAME } from '../src/Frontend';
 import Handler from '../src/MythEndpointInfo';
-import { createBackendNock, createMockFrontend, MockMythAlexaEventFrontend } from './MockHelper';
+import { createBackendNock, createMockFrontend } from './MockHelper';
 
 
-describe('MythEndpointInfo', () => {
+describe('MythEndpointInfo', function () {
     const sandbox = createSandbox()
-    let frontend: MockMythAlexaEventFrontend
-    let handler: Handler
-    before(async () => {
-        frontend = await createMockFrontend('endpointinfo');
-        handler = new Handler(frontend)
+    beforeEach(async function () {
+        const frontend = await createMockFrontend('endpointinfo');
+        new Handler(frontend)
+        this.currentTest['frontend'] = frontend
     })
-    afterEach(() => {
+    afterEach(function () {
         sandbox.restore()
-        frontend.resetDeltaId()
     })
-    context('Alexa Shadow', () => {
-        it('should refreshInfo', async () => {
+    context('Alexa Shadow', function () {
+        it('should refreshInfo', async function () {
+            const frontend = this.test['frontend']
             const alexaDeviceName = frontend.hostname() + ' Alexa'
             const frontendNock = createBackendNock('Myth')
                 .get('/GetSetting').query({
                     Key: 'AlexaFriendlyName',
                     HostName: frontend.hostname(),
                     Default: frontend.hostname()
-                }).reply(200, () => {
+                }).reply(200, function () {
                     return {
                         String: alexaDeviceName
                     };

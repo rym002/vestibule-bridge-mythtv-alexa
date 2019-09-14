@@ -1,26 +1,24 @@
 import { RemoteVideoPlayer } from '@vestibule-link/alexa-video-skill-types';
+import { expect } from 'chai';
 import 'mocha';
+import { Program, RecStatusType } from 'mythtv-services-api';
+import { VideoMetadataInfo } from 'mythtv-services-api/dist/VideoService';
 import { createSandbox } from 'sinon';
 import Handler from '../src/MythRemoteVideoPlayer';
-import { createMockFrontend, MockMythAlexaEventFrontend, verifyActionDirective, verifyRefreshCapability, createFrontendNock, createBackendNock, toBool } from './MockHelper';
-import { Program, RecStatusType } from 'mythtv-services-api'
-import { expect } from 'chai'
-import { VideoMetadataInfo } from 'mythtv-services-api/dist/VideoService';
+import { createBackendNock, createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, toBool, verifyActionDirective, verifyRefreshCapability } from './MockHelper';
 
-describe('MythRemoteVideoPlayer', () => {
+describe('MythRemoteVideoPlayer', function () {
     const sandbox = createSandbox()
-    let frontend: MockMythAlexaEventFrontend
-    let handler: Handler
-    before(async () => {
-        frontend = await createMockFrontend('remoteVideo');
-        handler = new Handler(frontend)
+    beforeEach(async function () {
+        const frontend = await createMockFrontend('remoteVideo');
+        new Handler(frontend)
+        this.currentTest['frontend'] = frontend
     })
-    afterEach(() => {
+    afterEach(function () {
         sandbox.restore()
-        frontend.resetDeltaId()
     })
-    context('directives', () => {
-        context('SearchAndPlay', () => {
+    context('directives', function () {
+        context('SearchAndPlay', function () {
             function createProgram(RecordedId: number, Season: number, Episode: number, Airdate: Date): Partial<Program> {
                 return {
                     ProgramId: RecordedId + '',
@@ -30,11 +28,24 @@ describe('MythRemoteVideoPlayer', () => {
                         RecGroup: 'TEST',
                         PlayGroup: "TEST",
                         Status: RecStatusType.Recorded,
-                        StorageGroup: 'ANY'
+                        StorageGroup: 'ANY',
+                        DupInType:0,
+                        DupMethod:0,
+                        Priority:0,
+                        EncoderId:0,
+                        EncoderName:'',
+                        EndTs:new Date(),
+                        StartTs:new Date(),
+                        FileName:'',
+                        FileSize:0,
+                        HostName:'',
+                        LastModified:new Date(),
+                        Profile:'',
+                        RecType:0
                     },
-                    Airdate: Airdate.toISOString().substring(0, 10),
-                    Episode: Episode + '',
-                    Season: Season + ''
+                    Airdate: Airdate,
+                    Episode: Episode ,
+                    Season: Season 
                 }
 
             }
@@ -90,7 +101,7 @@ describe('MythRemoteVideoPlayer', () => {
                     .get('/GetRecordedList')
                     .query({
                         TitleRegEx: 'Test Video|Another Video'
-                    }).reply(200, () => {
+                    }).reply(200, function () {
                         return {
                             ProgramList: {
                                 Programs: programs
@@ -98,25 +109,25 @@ describe('MythRemoteVideoPlayer', () => {
                         }
                     })
             }
-            context('Recording', () => {
+            context('Recording', function () {
                 const programs = [
                     createProgram(300, 2, 9, new Date()),
                     createProgram(200, 1, 10, new Date()),
                     createProgram(100, 1, 9, new Date())
                 ]
-                function createFrontendPlayRecordingNock(recordedId: number) {
+                function createFrontendPlayRecordingNock(recordedId: number, frontend: MockMythAlexaEventFrontend) {
                     return createFrontendNock(frontend.hostname())
                         .post('/PlayRecording')
                         .query({
                             RecordedId: recordedId
-                        }).reply(200, () => {
+                        }).reply(200, function () {
                             return toBool(true)
                         })
                 }
-                it('should play the requested season and episode', async () => {
+                it('should play the requested season and episode', async function () {
                     const backendNock = createDvrGetRecordedListNock(programs)
-                    const frontendNock = createFrontendPlayRecordingNock(200)
-                    await verifyActionDirective(sandbox, frontend, RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestSeason, [], {
+                    const frontendNock = createFrontendPlayRecordingNock(200, this.test['frontend'])
+                    await verifyActionDirective(this.test['frontend'], RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestSeason, [], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -125,10 +136,10 @@ describe('MythRemoteVideoPlayer', () => {
                     expect(frontendNock.isDone()).to.be.true
 
                 })
-                it('should play the first episode based on season and episode if not in request', async () => {
+                it('should play the first episode based on season and episode if not in request', async function () {
                     const backendNock = createDvrGetRecordedListNock(programs)
-                    const frontendNock = createFrontendPlayRecordingNock(100)
-                    await verifyActionDirective(sandbox, frontend, RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestNoSeason, [], {
+                    const frontendNock = createFrontendPlayRecordingNock(100, this.test['frontend'])
+                    await verifyActionDirective(this.test['frontend'], RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestNoSeason, [], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -136,15 +147,15 @@ describe('MythRemoteVideoPlayer', () => {
                     expect(backendNock.isDone()).to.be.true
                     expect(frontendNock.isDone()).to.be.true
                 })
-                it('should play the first episode based on airdate', async () => {
+                it('should play the first episode based on airdate', async function () {
                     const programs = [
                         createProgram(300, 0, 0, new Date('2019-09-01')),
                         createProgram(200, 0, 0, new Date('2019-08-01')),
                         createProgram(100, 0, 0, new Date('2019-07-30'))
                     ]
                     const backendNock = createDvrGetRecordedListNock(programs)
-                    const frontendNock = createFrontendPlayRecordingNock(100)
-                    await verifyActionDirective(sandbox, frontend, RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestNoSeason, [], {
+                    const frontendNock = createFrontendPlayRecordingNock(100, this.test['frontend'])
+                    await verifyActionDirective(this.test['frontend'], RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestNoSeason, [], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -154,12 +165,12 @@ describe('MythRemoteVideoPlayer', () => {
 
                 })
             })
-            context('Video', () => {
+            context('Video', function () {
                 function createVideoGetVideoListNock(videos: Partial<VideoMetadataInfo>[]) {
                     return createBackendNock('Video')
                         .get('/GetVideoList')
                         .query({
-                        }).reply(200, () => {
+                        }).reply(200, function () {
                             return {
                                 VideoMetadataInfoList: {
                                     VideoMetadataInfos: videos
@@ -171,8 +182,8 @@ describe('MythRemoteVideoPlayer', () => {
                     return {
                         Id: Id,
                         Title: Title,
-                        Season: Season + '',
-                        Episode: Episode + ''
+                        Season: Season ,
+                        Episode: Episode
                     }
                 }
                 const testVideos: Partial<VideoMetadataInfo>[] = [
@@ -180,10 +191,10 @@ describe('MythRemoteVideoPlayer', () => {
                     createProgram(200, 'Another Video', 1, 10),
                     createProgram(100, 'Another Video', 1, 9)
                 ]
-                function createFrontendPlayVideoNock(videoId: number, state: string) {
+                function createFrontendPlayVideoNock(videoId: number, state: string, frontend: MockMythAlexaEventFrontend) {
                     return createFrontendNock(frontend.hostname())
                         .get('/GetStatus')
-                        .reply(200, () => {
+                        .reply(200, function () {
                             return {
                                 FrontendStatus: {
                                     State: {
@@ -195,15 +206,15 @@ describe('MythRemoteVideoPlayer', () => {
                         .query({
                             Id: videoId + '',
                             UseBookmark: false
-                        }).reply(200, () => {
+                        }).reply(200, function () {
                             return toBool(true)
                         })
                 }
-                it('should play the first video', async () => {
+                it('should play the first video', async function () {
                     const backendDvrNock = createDvrGetRecordedListNock([])
                     const backendVideoNock = createVideoGetVideoListNock(testVideos)
-                    const frontendNock = createFrontendPlayVideoNock(300, 'MainMenu')
-                    await verifyActionDirective(sandbox, frontend, RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestNoSeason, [], {
+                    const frontendNock = createFrontendPlayVideoNock(300, 'MainMenu', this.test['frontend'])
+                    await verifyActionDirective(this.test['frontend'], RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestNoSeason, [], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -213,11 +224,11 @@ describe('MythRemoteVideoPlayer', () => {
                     expect(frontendNock.isDone()).to.be.true
 
                 })
-                it('should play the first video based on episode', async () => {
+                it('should play the first video based on episode', async function () {
                     const backendDvrNock = createDvrGetRecordedListNock([])
                     const backendVideoNock = createVideoGetVideoListNock(testVideos)
-                    const frontendNock = createFrontendPlayVideoNock(200, 'MainMenu')
-                    await verifyActionDirective(sandbox, frontend, RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestSeason, [], {
+                    const frontendNock = createFrontendPlayVideoNock(200, 'MainMenu', this.test['frontend'])
+                    await verifyActionDirective(this.test['frontend'], RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestSeason, [], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -226,18 +237,18 @@ describe('MythRemoteVideoPlayer', () => {
                     expect(backendVideoNock.isDone()).to.be.true
                     expect(frontendNock.isDone()).to.be.true
                 })
-                it('should stop playback if watching tv', async () => {
+                it('should stop playback if watching tv', async function () {
                     const backendDvrNock = createDvrGetRecordedListNock([])
                     const backendVideoNock = createVideoGetVideoListNock(testVideos)
-                    const frontendNock = createFrontendPlayVideoNock(200, 'WatchingLiveTV')
-                    await verifyActionDirective(sandbox, frontend, RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestSeason, [{
+                    const frontendNock = createFrontendPlayVideoNock(200, 'WatchingLiveTV', this.test['frontend'])
+                    await verifyActionDirective(this.test['frontend'], RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestSeason, [{
                         actionName: 'STOPPLAYBACK',
                         response: true
                     }], {
-                            error: false,
-                            payload: {},
-                            stateChange: undefined
-                        })
+                        error: false,
+                        payload: {},
+                        stateChange: undefined
+                    })
                     expect(backendDvrNock.isDone()).to.be.true
                     expect(backendVideoNock.isDone()).to.be.true
                     expect(frontendNock.isDone()).to.be.true
@@ -246,9 +257,9 @@ describe('MythRemoteVideoPlayer', () => {
             })
         })
     })
-    context('Alexa Shadow', () => {
-        it('refreshCapability should emit true', async () => {
-            await verifyRefreshCapability(sandbox, frontend, false, RemoteVideoPlayer.namespace, true)
+    context('Alexa Shadow', function () {
+        it('refreshCapability should emit true', async function () {
+            await verifyRefreshCapability(sandbox, this.test['frontend'], false, RemoteVideoPlayer.namespace, true)
         })
     })
 
