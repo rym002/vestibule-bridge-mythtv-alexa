@@ -2,7 +2,7 @@ import { SeekController } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from "@vestibule-link/bridge-assistant-alexa";
 import { SubType } from "@vestibule-link/iot-types";
 import { duration } from 'moment';
-import { backend, State } from "mythtv-services-api";
+import { masterBackend, ApiTypes } from "mythtv-services-api";
 import { connect } from 'net';
 import { MythAlexaEventFrontend } from "./Frontend";
 
@@ -14,7 +14,7 @@ type Response = {
 }
 export default class FrontendSeek
     implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter {
-    controlPort: number = 0;
+    controlPort: number = 6546;
     readonly supported: SupportedDirectives<DirectiveType> = ['AdjustSeekPosition'];
     constructor(readonly fe: MythAlexaEventFrontend) {
         fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
@@ -34,7 +34,7 @@ export default class FrontendSeek
         }
 
     }
-    async getState(): Promise<State> {
+    async getState(): Promise<ApiTypes.State> {
         const status = await this.fe.GetRefreshedStatus();
         return status.State;
     }
@@ -43,7 +43,7 @@ export default class FrontendSeek
         let state = await this.getState();
         let desiredPostition = (state.secondsplayed * 1000) + deltaPositionMilliseconds;
         const totalAvailable = state.totalseconds * 1000;
-        desiredPostition = Math.min(totalAvailable,Math.max(0,desiredPostition));
+        desiredPostition = Math.min(totalAvailable, Math.max(0, desiredPostition));
 
         const dur = duration(desiredPostition);
         const seekPosition = dur.hours().toString().padStart(2, '0')
@@ -62,7 +62,7 @@ export default class FrontendSeek
         }
     }
 
-    sendNetworkCommand(command: string): Promise<void> {
+    private sendNetworkCommand(command: string): Promise<void> {
         const promise = new Promise<void>((resolve, reject) => {
             const client = connect(this.controlPort, this.fe.hostname(), () => {
                 client.on('error', err => {
@@ -90,18 +90,18 @@ export default class FrontendSeek
         return promise;
     }
 
-    async verify(): Promise<void> {
-        const enabled = await backend.mythService.GetSetting({
+    private async verify(): Promise<void> {
+        const enabled = await masterBackend.mythService.GetSetting({
             Key: 'NetworkControlEnabled',
             HostName: this.fe.hostname()
         });
         if (enabled != '1') {
             throw ('NetworkControlEnabled not enabled')
         }
-        const portValue = await backend.mythService.GetSetting({
+        const portValue = await masterBackend.mythService.GetSetting({
             Key: 'NetworkControlPort',
             HostName: this.fe.hostname(),
-            Default: '6546'
+            Default: this.controlPort + ''
         })
         this.controlPort = Number(portValue);
     }

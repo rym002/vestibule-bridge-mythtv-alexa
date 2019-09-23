@@ -1,7 +1,7 @@
 import { VideoRecorder } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from "@vestibule-link/bridge-assistant-alexa";
 import { EndpointState, SubType } from "@vestibule-link/iot-types";
-import { backend } from "mythtv-services-api";
+import { masterBackend } from "mythtv-services-api";
 import { MythAlexaEventFrontend } from "./Frontend";
 
 type DirectiveType = VideoRecorder.NamespaceType;
@@ -30,7 +30,7 @@ export default class MythTvRecorder
                 e.entityMetadata.channelCallSign
             }
         })
-        backend.dvrService
+        masterBackend.dvrService
         throw 'Not Implemeted'
     }
     async CancelRecording(payload: VideoRecorder.RequestPayload): Promise<Response> {

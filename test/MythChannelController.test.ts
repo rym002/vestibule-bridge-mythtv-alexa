@@ -1,6 +1,6 @@
 import { ChannelController } from '@vestibule-link/alexa-video-skill-types';
 import 'mocha';
-import { ChannelInfo, VideoSource } from 'mythtv-services-api';
+import { ApiTypes } from 'mythtv-services-api';
 import { createSandbox } from 'sinon';
 import Handler from '../src/MythChannelController';
 import { ActionMessage, createBackendNock, createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, verifyActionDirective, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
@@ -41,7 +41,7 @@ describe('MythChannelController', function () {
             .get('/GetChannelInfo')
             .query({
                 ChanID: 150
-            }).reply(200, (): { ChannelInfo: Partial<ChannelInfo> } => {
+            }).reply(200, (): { ChannelInfo: Partial<ApiTypes.ChannelInfo> } => {
                 return {
                     ChannelInfo: {
                         ChanId: 150,
@@ -59,7 +59,7 @@ describe('MythChannelController', function () {
             const channelMock = createBackendNock('Channel')
                 .get('/GetVideoSourceList')
                 .reply(200, function () {
-                    const sources: Partial<VideoSource>[] = [
+                    const sources: Partial<ApiTypes.VideoSource>[] = [
                         {
                             Id: 1
                         },
@@ -78,7 +78,7 @@ describe('MythChannelController', function () {
                     OnlyVisible: true,
                     Details: true
                 }).reply(200, function () {
-                    const channelInfos: Partial<ChannelInfo>[] = [
+                    const channelInfos: Partial<ApiTypes.ChannelInfo>[] = [
                         {
                             ATSCMajorChan: 100,
                             ATSCMinorChan: 0,
@@ -140,7 +140,7 @@ describe('MythChannelController', function () {
                     OnlyVisible: true,
                     Details: true
                 }).reply(200, function () {
-                    const channelInfos: Partial<ChannelInfo>[] = [
+                    const channelInfos: Partial<ApiTypes.ChannelInfo>[] = [
                         {
                             ATSCMajorChan: 200,
                             ATSCMinorChan: 0,

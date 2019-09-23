@@ -1,7 +1,7 @@
 import { RecordController } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, DirectiveHandlers, StateEmitter, SupportedDirectives } from "@vestibule-link/bridge-assistant-alexa";
 import { EndpointState, SubType } from "@vestibule-link/iot-types";
-import { backend } from "mythtv-services-api";
+import { masterBackend } from "mythtv-services-api";
 import { MythAlexaEventFrontend } from "./Frontend";
 
 
@@ -67,7 +67,7 @@ export default class FrontendRecord
         if (await this.fe.isWatchingTv()) {
             const status = await this.fe.GetStatus();
             const state = status.State;
-            const encoders = await backend.dvrService.GetEncoderList();
+            const encoders = await masterBackend.dvrService.GetEncoderList();
             const notWatchingLiveTV = encoders.filter(encoder => {
                 return encoder.Connected
                     && encoder.Recording.Recording.RecGroup !== 'LiveTV'

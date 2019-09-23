@@ -2,7 +2,7 @@ import { ChannelController } from '@vestibule-link/alexa-video-skill-types';
 import { CapabilityEmitter, DirectiveHandlers, StateEmitter, SupportedDirectives } from '@vestibule-link/bridge-assistant-alexa';
 import { EndpointState, ErrorHolder, SubType } from '@vestibule-link/iot-types';
 import * as Fuse from 'fuse.js';
-import { backend, ChannelInfo } from 'mythtv-services-api';
+import { masterBackend, ApiTypes } from 'mythtv-services-api';
 import { MythAlexaEventFrontend } from "./Frontend";
 
 type DirectiveType = ChannelController.NamespaceType;
@@ -123,7 +123,7 @@ export default class FrontendChannel
             const status = await this.fe.GetStatus();
             const chanId = status.State.chanid;
             if (chanId) {
-                const channelInfo = await backend.channelService.GetChannelInfo(chanId);
+                const channelInfo = await masterBackend.channelService.GetChannelInfo({ChanID:chanId});
                 if (channelInfo) {
                     const ret: ChannelController.Channel = {
                         number: channelInfo.ChanNum,
@@ -143,13 +143,13 @@ export default class FrontendChannel
         this.fe.alexaEmitter.emit('state', DirectiveName, 'channel', null, deltaId);
     }
 }
-class FuseOpt implements Fuse.FuseOptions<ChannelInfo> {
+class FuseOpt implements Fuse.FuseOptions<ApiTypes.ChannelInfo> {
     readonly includeScore = true
     readonly caseSensitive = false
-    readonly keys: { name: keyof ChannelInfo; weight: number }[];
+    readonly keys: { name: keyof ApiTypes.ChannelInfo; weight: number }[];
     readonly shouldSort = true;
     readonly minMatchCharLength = 3;
-    constructor(name: keyof ChannelInfo, readonly tokenize: boolean) {
+    constructor(name: keyof ApiTypes.ChannelInfo, readonly tokenize: boolean) {
         this.keys = [
             {
                 name: name,
@@ -161,8 +161,8 @@ class FuseOpt implements Fuse.FuseOptions<ChannelInfo> {
 class ChannelLookup {
     private readonly chanNumToIndex = new Map<string, number>();
     private readonly callSignToChanNum = new Map<string, string>();
-    private channelInfos: ChannelInfo[] | undefined;
-    private channelNameFuse: Fuse<ChannelInfo, FuseOpt> | undefined;
+    private channelInfos: ApiTypes.ChannelInfo[] | undefined;
+    private channelNameFuse: Fuse<ApiTypes.ChannelInfo, FuseOpt> | undefined;
     private hdSuffixes = ['HD', 'DT', ''];
     private static _instance
     private constructor() {
@@ -175,9 +175,9 @@ class ChannelLookup {
         return this._instance;
     }
     private async refreshChannelMap(): Promise<void> {
-        const videoSources = await backend.channelService.GetVideoSourceList();
+        const videoSources = await masterBackend.channelService.GetVideoSourceList();
         const channelInfoPromises = videoSources.VideoSources.map(async videoSource => {
-            return await backend.channelService.GetChannelInfoList({
+            return await masterBackend.channelService.GetChannelInfoList({
                 SourceID: videoSource.Id,
                 OnlyVisible: true,
                 Details: true
@@ -245,7 +245,7 @@ class ChannelLookup {
             }
         }
     }
-    private searchChannel(fuse: Fuse<ChannelInfo, FuseOpt>, search: string): string | undefined {
+    private searchChannel(fuse: Fuse<ApiTypes.ChannelInfo, FuseOpt>, search: string): string | undefined {
         const ret = fuse.search(search, {
             limit: 1
         })

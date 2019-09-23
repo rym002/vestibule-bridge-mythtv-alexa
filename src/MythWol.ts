@@ -21,14 +21,14 @@ export default class FrontendWol
         const capabilities = await this.capabilities();
         this.fe.alexaEmitter.emit('capability', DirectiveName, capabilities, deltaId);
     }
-    private async capabilities(): Promise<string[]|undefined> {
+    private async capabilities(): Promise<string[] | undefined> {
         try {
             const mac = await this.getMAC(this.fe.hostname());
             if (mac) {
                 return [mac];
             }
             throw 'MAC Not found for ' + this.fe.hostname();
-        } catch (err) {            
+        } catch (err) {
             console.error(err);
             return undefined
         }

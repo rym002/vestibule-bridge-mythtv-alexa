@@ -1,6 +1,6 @@
 import { InfoEmitter } from "@vestibule-link/bridge-assistant-alexa";
 import { EndpointInfo, generateEndpointId } from "@vestibule-link/iot-types";
-import { backend } from "mythtv-services-api";
+import { masterBackend } from "mythtv-services-api";
 import { getLocalEndpoint, MANUFACTURER_NAME, MythAlexaEventFrontend } from "./Frontend";
 
 const ALEXA_FRIENDLY_NAME = "AlexaFriendlyName";
@@ -16,7 +16,7 @@ export default class FrontendInfo implements InfoEmitter {
 
     private async updateInfo(deltaId: symbol): Promise<void> {
         const hostId = this.fe.hostname();
-        const alexaDeviceName = await backend.mythService.GetSetting({
+        const alexaDeviceName = await masterBackend.mythService.GetSetting({
             Key: ALEXA_FRIENDLY_NAME,
             HostName: hostId,
             Default: hostId

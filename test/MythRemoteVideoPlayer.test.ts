@@ -1,8 +1,7 @@
 import { RemoteVideoPlayer } from '@vestibule-link/alexa-video-skill-types';
 import { expect } from 'chai';
 import 'mocha';
-import { Program, RecStatusType } from 'mythtv-services-api';
-import { VideoMetadataInfo } from 'mythtv-services-api/dist/VideoService';
+import { ApiTypes } from 'mythtv-services-api';
 import { createSandbox } from 'sinon';
 import Handler from '../src/MythRemoteVideoPlayer';
 import { createBackendNock, createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, toBool, verifyActionDirective, verifyRefreshCapability } from './MockHelper';
@@ -19,7 +18,7 @@ describe('MythRemoteVideoPlayer', function () {
     })
     context('directives', function () {
         context('SearchAndPlay', function () {
-            function createProgram(RecordedId: number, Season: number, Episode: number, Airdate: Date): Partial<Program> {
+            function createProgram(RecordedId: number, Season: number, Episode: number, Airdate: Date): Partial<ApiTypes.Program> {
                 return {
                     ProgramId: RecordedId + '',
                     Recording: {
@@ -27,7 +26,7 @@ describe('MythRemoteVideoPlayer', function () {
                         RecordedId: RecordedId,
                         RecGroup: 'TEST',
                         PlayGroup: "TEST",
-                        Status: RecStatusType.Recorded,
+                        Status: ApiTypes.RecStatusType.Recorded,
                         StorageGroup: 'ANY',
                         DupInType:0,
                         DupMethod:0,
@@ -96,7 +95,7 @@ describe('MythRemoteVideoPlayer', function () {
                 }
             }
 
-            function createDvrGetRecordedListNock(programs: Partial<Program>[]) {
+            function createDvrGetRecordedListNock(programs: Partial<ApiTypes.Program>[]) {
                 return createBackendNock('Dvr')
                     .get('/GetRecordedList')
                     .query({
@@ -166,7 +165,7 @@ describe('MythRemoteVideoPlayer', function () {
                 })
             })
             context('Video', function () {
-                function createVideoGetVideoListNock(videos: Partial<VideoMetadataInfo>[]) {
+                function createVideoGetVideoListNock(videos: Partial<ApiTypes.VideoMetadataInfo>[]) {
                     return createBackendNock('Video')
                         .get('/GetVideoList')
                         .query({
@@ -178,7 +177,7 @@ describe('MythRemoteVideoPlayer', function () {
                             }
                         })
                 }
-                function createProgram(Id: number, Title: string, Season: number, Episode: number): Partial<VideoMetadataInfo> {
+                function createProgram(Id: number, Title: string, Season: number, Episode: number): Partial<ApiTypes.VideoMetadataInfo> {
                     return {
                         Id: Id,
                         Title: Title,
@@ -186,7 +185,7 @@ describe('MythRemoteVideoPlayer', function () {
                         Episode: Episode
                     }
                 }
-                const testVideos: Partial<VideoMetadataInfo>[] = [
+                const testVideos: Partial<ApiTypes.VideoMetadataInfo>[] = [
                     createProgram(300, 'Another Video', 2, 9),
                     createProgram(200, 'Another Video', 1, 10),
                     createProgram(100, 'Another Video', 1, 9)

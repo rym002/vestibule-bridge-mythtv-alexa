@@ -2,7 +2,7 @@ import { RemoteVideoPlayer, Video } from "@vestibule-link/alexa-video-skill-type
 import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from "@vestibule-link/bridge-assistant-alexa";
 import { SubType } from "@vestibule-link/iot-types";
 import { sortBy } from 'lodash';
-import { backend, Program } from "mythtv-services-api";
+import { masterBackend, ApiTypes } from "mythtv-services-api";
 import { MythAlexaEventFrontend } from "./Frontend";
 
 
@@ -13,7 +13,7 @@ type Response = {
 }
 export default class FrontendVideoPlayer
     implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter {
-    readonly backend = backend;
+    readonly backend = masterBackend;
     readonly supported: SupportedDirectives<DirectiveType> = ['SearchAndPlay'];
     constructor(readonly fe: MythAlexaEventFrontend) {
         fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
@@ -31,9 +31,9 @@ export default class FrontendVideoPlayer
         });
         const programs = foundPrograms.Programs;
         const filteredPrograms = sortBy(programs, [
-            (program: Program) => Number(program.Season),
-            (program: Program) => Number(program.Episode),
-            (program: Program) => program.Airdate
+            (program: ApiTypes.Program) => Number(program.Season),
+            (program: ApiTypes.Program) => Number(program.Episode),
+            (program: ApiTypes.Program) => program.Airdate
         ]).filter(program => (
             (searchCriteria.Season == undefined || searchCriteria.Season.includes(program.Season + ''))
             &&

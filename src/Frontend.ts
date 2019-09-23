@@ -2,8 +2,8 @@ import { providersEmitter } from "@vestibule-link/bridge-assistant";
 import { AlexaEndpointEmitter } from "@vestibule-link/bridge-assistant-alexa";
 import { frontends, mergeObject, MythEventFrontend } from "@vestibule-link/bridge-mythtv";
 import { LocalEndpoint } from "@vestibule-link/iot-types";
-import { backend, Frontend } from "mythtv-services-api";
-import FrontendChannel  from "./MythChannelController";
+import { masterBackend, Frontend } from "mythtv-services-api";
+import FrontendChannel from "./MythChannelController";
 import FrontendHealth from "./MythEndpointHealth";
 import FrontendInfo from "./MythEndpointInfo";
 import FrontendLauncher from "./MythLauncher";
@@ -30,7 +30,7 @@ class AlexaEventFrontend {
     readonly mythEventEmitter: MythSenderEventEmitter
     constructor(readonly alexaEmitter: AlexaEndpointEmitter, private readonly fe: MythEventFrontend) {
         this.mythEventEmitter = fe.mythEventEmitter
-        fe.mythEventEmitter.on('post',(eventType,message)=>{
+        fe.mythEventEmitter.on('post', (eventType, message) => {
             this.alexaEmitter.completeDelta(this.fe.eventDeltaId());
         })
     }
@@ -38,7 +38,7 @@ class AlexaEventFrontend {
 
 export async function registerFrontends(): Promise<void> {
     const fePromises = frontends.map(async fe => {
-        const enabled = await backend.mythService.GetSetting({
+        const enabled = await masterBackend.mythService.GetSetting({
             Key: ALEXA_ENABLED,
             HostName: fe.hostname(),
             Default: TRUE
@@ -61,7 +61,7 @@ function buildEndpoint(fe: MythAlexaEventFrontend): void {
     });
 }
 
-export function getLocalEndpoint(fe: Frontend): LocalEndpoint {
+export function getLocalEndpoint(fe: Frontend.Service): LocalEndpoint {
     return {
         provider: MANUFACTURER_NAME,
         host: fe.hostname()

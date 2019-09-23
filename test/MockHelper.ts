@@ -1,6 +1,6 @@
 import { MythAlexaEventFrontend, MANUFACTURER_NAME } from "../src/Frontend";
 import nock = require("nock");
-import { frontend, Frontend, FrontendStatus, Bool } from "mythtv-services-api";
+import { frontend, Frontend, ApiTypes } from "mythtv-services-api";
 import { MythSenderEventEmitter } from "mythtv-event-emitter";
 import { EventEmitter } from "events";
 import { AlexaEndpointEmitter } from "@vestibule-link/bridge-assistant-alexa";
@@ -21,7 +21,7 @@ class MockAlexaFrontend {
     readonly mythEventEmitter: MythSenderEventEmitter = new EventEmitter();
     private readonly memoizeEventDelta: MemoizedFunction
     eventDeltaId: () => symbol
-    constructor(readonly alexaEmitter: AlexaEndpointEmitter, readonly fe: Frontend) {
+    constructor(readonly alexaEmitter: AlexaEndpointEmitter, readonly fe: Frontend.Service) {
         const memoizeEventDelta = memoize(() => {
             return Symbol();
         })
@@ -29,16 +29,16 @@ class MockAlexaFrontend {
         this.memoizeEventDelta = memoizeEventDelta
     }
     async isWatchingTv(): Promise<boolean> {
-        const status: FrontendStatus = await this.fe.GetStatus();
+        const status: ApiTypes.FrontendStatus = await this.fe.GetStatus();
         const state = status.State.state;
         return state == 'WatchingLiveTV';
     }
     async isWatching(): Promise<boolean> {
-        const status: FrontendStatus = await this.fe.GetStatus();
+        const status: ApiTypes.FrontendStatus = await this.fe.GetStatus();
         const state = status.State.state;
         return state.startsWith('Watching');
     }
-    async GetRefreshedStatus(): Promise<FrontendStatus> {
+    async GetRefreshedStatus(): Promise<ApiTypes.FrontendStatus> {
         return this.fe.GetStatus();
     }
 
@@ -141,9 +141,9 @@ export async function verifyMythEventState<NS extends keyof EndpointState, N ext
         frontend.mythEventEmitter.emit(eventType, eventMessage)
     })
 }
-export function toBool(data: boolean): Bool {
+export function toBool(data: boolean) {
     return {
-        bool: data
+        bool: data + ''
     }
 }
 
