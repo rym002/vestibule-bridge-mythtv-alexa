@@ -9,7 +9,6 @@ import { createBackendNock, createFrontendNock, createMockFrontend, verifyAction
 
 describe('MythRecordController', function () {
     const sandbox = createSandbox()
-    let dvrNock:Scope;
     beforeEach(async function () {
         const frontend = await createMockFrontend('record');
         new Handler(frontend)
@@ -19,7 +18,7 @@ describe('MythRecordController', function () {
         sandbox.restore()
     })
     before(function () {
-        dvrNock = createBackendNock('Dvr')
+        createBackendNock('Dvr')
             .get("/GetEncoderList")
             .times(5)
             .reply(200, function () {
@@ -53,9 +52,6 @@ describe('MythRecordController', function () {
                     }
                 }
             })
-    })
-    after(function(){
-        dvrNock.restore()
     })
     context('directives', function () {
         it('StartRecording should send TOGGLERECORD action', async function () {
