@@ -31,14 +31,17 @@ describe('MythEndpointHealth', function () {
                     .post('/SendAction')
                     .query({
                         Action: 'FAKE'
-                    }).reply(200, function () {
-                        return toBool(true);
-                    })
+                    }).reply(200, toBool(true))
                 await verifyRefreshState(this.test['frontend'], EndpointHealth.namespace, 'connectivity', 'OK')
                 expect(feNock.isDone()).to.be.true
 
             })
             it('should emit UNREACHABLE when failed response', async function () {
+                const feNock = createFrontendNock(this.test['frontend'].hostname())
+                    .post('/SendAction')
+                    .query({
+                        Action: 'FAKE'
+                    }).replyWithError('Failed')
                 await verifyRefreshState(this.test['frontend'], EndpointHealth.namespace, 'connectivity', 'UNREACHABLE')
             })
         })
