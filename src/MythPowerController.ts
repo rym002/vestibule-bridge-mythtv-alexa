@@ -59,7 +59,7 @@ export default class FrontendPower
         try {
             const resp =await this.fe.SendAction({
                 Action: 'FAKE'
-            }, false);
+            }, true);
             return 'ON';
         } catch (err) {
             console.error(err)

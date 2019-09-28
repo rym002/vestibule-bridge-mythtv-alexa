@@ -33,7 +33,7 @@ describe('MythPowerController', function () {
                     .post('/SendAction')
                     .query({
                         Action: 'FAKE'
-                    }).reply(200, toBool(true))
+                    }).reply(200, toBool(false))
                 await verifyRefreshState(this.test['frontend'], PowerController.namespace, 'powerState', 'ON')
                 expect(feNock.isDone()).to.be.true
 

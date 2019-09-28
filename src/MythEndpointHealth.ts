@@ -34,7 +34,7 @@ export default class FrontendHealth
         try {
             await this.fe.SendAction({
                 Action: 'FAKE'
-            }, false);
+            }, true);
             return 'OK';
         } catch (err) {
             console.log(err)
