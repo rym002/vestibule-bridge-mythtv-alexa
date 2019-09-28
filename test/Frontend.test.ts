@@ -66,12 +66,10 @@ describe('Frontend', () => {
             })
 
         const feNock = nock('http://hostgood:6547/Frontend')
-            .get('/GetStatus').thrice().reply(200, () => {
-                return {
-                    FrontendStatus: {
-                        State: {
-                            state: 'WatchingLiveTV'
-                        }
+            .get('/GetStatus').thrice().reply(200, {
+                FrontendStatus: {
+                    State: {
+                        state: 'WatchingLiveTV'
                     }
                 }
             })

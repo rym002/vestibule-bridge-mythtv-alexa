@@ -64,17 +64,13 @@ export async function createMockFrontend(hostname: string): Promise<MockMythAlex
             Key: 'FrontendStatusPort',
             HostName: hostname,
             Default: '6547'
-        }).reply(200, () => {
-            return {
-                String: '6547'
-            };
+        }).reply(200, {
+            String: '6547'
         }).get('/GetSetting').query({
             Key: 'Theme',
             HostName: hostname
-        }).reply(200, () => {
-            return {
-                String: 'theme'
-            };
+        }).reply(200, {
+            String: 'theme'
         });
     registerAssistant();
     const fe = await frontend(hostname);
@@ -158,9 +154,7 @@ export async function verifyActionDirective<NS extends Directive.Namespaces, N e
         frontendNock = frontendNock.post('/SendAction')
             .query({
                 Action: mythAction.actionName
-            }).reply(200, () => {
-                return toBool(mythAction.response);
-            })
+            }).reply(200, toBool(mythAction.response))
     })
     const responsePromise = new Promise((resolve, reject) => {
         responseRouter.once(messageId, (response) => {

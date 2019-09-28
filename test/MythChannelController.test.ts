@@ -41,13 +41,11 @@ describe('MythChannelController', function () {
             .get('/GetChannelInfo')
             .query({
                 ChanID: 150
-            }).reply(200, (): { ChannelInfo: Partial<ApiTypes.ChannelInfo> } => {
-                return {
-                    ChannelInfo: {
-                        ChanId: 150,
-                        ChanNum: currentChannel.number,
-                        CallSign: currentChannel.affiliateCallSign
-                    }
+            }).reply(200, {
+                ChannelInfo: {
+                    ChanId: 150,
+                    ChanNum: currentChannel.number,
+                    CallSign: currentChannel.affiliateCallSign
                 }
             })
     }
@@ -374,7 +372,7 @@ describe('MythChannelController', function () {
             await verifyRefreshState(this.test['frontend'], ChannelController.namespace, 'channel', currentChannel)
         })
         it('refreshCapability should emit powerState', async function () {
-            await verifyRefreshCapability(sandbox,this.test['frontend'], false, ChannelController.namespace, ['channel'])
+            await verifyRefreshCapability(sandbox, this.test['frontend'], false, ChannelController.namespace, ['channel'])
         })
     })
 })

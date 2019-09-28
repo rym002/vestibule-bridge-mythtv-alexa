@@ -36,8 +36,8 @@ describe('MythSeekController', () => {
                 }
                 if (key == "d") {
                     return value.map(arrayVal => {
-                        if (typeof  arrayVal ==='number'){
-                            return arrayVal +''
+                        if (typeof arrayVal === 'number') {
+                            return arrayVal + ''
                         }
                         return arrayVal
                     })
@@ -52,18 +52,14 @@ describe('MythSeekController', () => {
                 .get('/GetSetting').query({
                     Key: 'NetworkControlEnabled',
                     HostName: hostname
-                }).reply(200, () => {
-                    return {
-                        String: '1'
-                    };
+                }).reply(200, {
+                    String: '1'
                 }).get('/GetSetting').query({
                     Key: 'NetworkControlPort',
                     HostName: hostname,
                     Default: '6546'
-                }).reply(200, () => {
-                    return {
-                        String: '6546'
-                    };
+                }).reply(200, {
+                    String: '6546'
                 })
             await verifyRefreshCapability(sandbox, this.test['frontend'], false, SeekController.namespace, true)
         })
