@@ -123,7 +123,7 @@ export default class FrontendChannel
             const status = await this.fe.GetStatus();
             const chanId = status.State.chanid;
             if (chanId) {
-                const channelInfo = await masterBackend.channelService.GetChannelInfo({ChanID:chanId});
+                const channelInfo = await masterBackend.channelService.GetChannelInfo({ ChanID: chanId });
                 if (channelInfo) {
                     const ret: ChannelController.Channel = {
                         number: channelInfo.ChanNum,
@@ -133,7 +133,11 @@ export default class FrontendChannel
                 }
             }
         }
-        return null;
+        return {
+            affiliateCallSign: null,
+            callSign: null,
+            number: null
+        };
     }
 
     private async updateWatchedState(deltaId: symbol): Promise<void> {
