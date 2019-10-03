@@ -105,10 +105,30 @@ export default class FrontendChannel
 
     async sendChannelChange(chanNum: string, watchingTv: boolean): Promise<void> {
         if (!watchingTv) {
+            const startedTv = new Promise((resolve, reject) => {
+                const timer = setTimeout(() => {
+                    const error: ErrorHolder = {
+                        errorType: 'Alexa',
+                        errorPayload: {
+                            type: 'INTERNAL_ERROR',
+                            message: 'Failed to start watch TV'
+                        }
+                    }
+                    reject(error)
+                }, 1000);
+                this.fe.mythEventEmitter.once('LIVETV_STARTED', (message) => {
+                    clearTimeout(timer)
+                    resolve()
+                })
+            })
             await this.fe.SendAction({
                 Action: 'Live TV'
             });
+            await startedTv
         }
+        await this.changeChannel(chanNum)
+    }
+    private async changeChannel(chanNum: string) {
         for (const chanPart of chanNum) {
             await this.fe.SendAction({
                 Action: chanPart
