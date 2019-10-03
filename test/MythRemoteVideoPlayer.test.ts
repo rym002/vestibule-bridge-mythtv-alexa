@@ -5,6 +5,7 @@ import { ApiTypes } from 'mythtv-services-api';
 import { createSandbox } from 'sinon';
 import Handler from '../src/MythRemoteVideoPlayer';
 import { createBackendNock, createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, toBool, verifyActionDirective, verifyRefreshCapability } from './MockHelper';
+import { EventEmitter } from 'events';
 
 describe('MythRemoteVideoPlayer', function () {
     const sandbox = createSandbox()
@@ -28,23 +29,23 @@ describe('MythRemoteVideoPlayer', function () {
                         PlayGroup: "TEST",
                         Status: ApiTypes.RecStatusType.Recorded,
                         StorageGroup: 'ANY',
-                        DupInType:0,
-                        DupMethod:0,
-                        Priority:0,
-                        EncoderId:0,
-                        EncoderName:'',
-                        EndTs:new Date(),
-                        StartTs:new Date(),
-                        FileName:'',
-                        FileSize:0,
-                        HostName:'',
-                        LastModified:new Date(),
-                        Profile:'',
-                        RecType:0
+                        DupInType: 0,
+                        DupMethod: 0,
+                        Priority: 0,
+                        EncoderId: 0,
+                        EncoderName: '',
+                        EndTs: new Date(),
+                        StartTs: new Date(),
+                        FileName: '',
+                        FileSize: 0,
+                        HostName: '',
+                        LastModified: new Date(),
+                        Profile: '',
+                        RecType: 0
                     },
                     Airdate: Airdate,
-                    Episode: Episode ,
-                    Season: Season 
+                    Episode: Episode,
+                    Season: Season
                 }
 
             }
@@ -181,7 +182,7 @@ describe('MythRemoteVideoPlayer', function () {
                     return {
                         Id: Id,
                         Title: Title,
-                        Season: Season ,
+                        Season: Season,
                         Episode: Episode
                     }
                 }
@@ -240,6 +241,14 @@ describe('MythRemoteVideoPlayer', function () {
                     const backendDvrNock = createDvrGetRecordedListNock([])
                     const backendVideoNock = createVideoGetVideoListNock(testVideos)
                     const frontendNock = createFrontendPlayVideoNock(200, 'WatchingLiveTV', this.test['frontend'])
+                    const mythEmitter = <EventEmitter>this.test['frontend'].mythEventEmitter;
+                    mythEmitter.once('newListener', (event, listener) => {
+                        if (event == 'PLAY_STOPPED') {
+                            process.nextTick(() => {
+                                mythEmitter.emit('PLAY_STOPPED', {})
+                            })
+                        }
+                    })
                     await verifyActionDirective(this.test['frontend'], RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestSeason, [{
                         actionName: 'STOPPLAYBACK',
                         response: true

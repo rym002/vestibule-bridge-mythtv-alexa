@@ -1,6 +1,6 @@
 import { RemoteVideoPlayer, Video } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from "@vestibule-link/bridge-assistant-alexa";
-import { SubType } from "@vestibule-link/iot-types";
+import { SubType, ErrorHolder } from "@vestibule-link/iot-types";
 import { sortBy } from 'lodash';
 import { masterBackend, ApiTypes } from "mythtv-services-api";
 import { MythAlexaEventFrontend } from "./Frontend";
@@ -71,29 +71,31 @@ export default class FrontendVideoPlayer
             const videoId = await this.findVideoId(searchCriteria);
             if (videoId) {
                 if (await this.fe.isWatching()) {
+                    const stoppedTv = new Promise((resolve, reject) => {
+                        const timer = setTimeout(() => {
+                            const error: ErrorHolder = {
+                                errorType: 'Alexa',
+                                errorPayload: {
+                                    type: 'ENDPOINT_BUSY',
+                                    message: 'Failed to stop'
+                                }
+                            }
+                            reject(error)
+                        }, 1000);
+                        this.fe.mythEventEmitter.once('PLAY_STOPPED', (message) => {
+                            clearTimeout(timer)
+                            resolve()
+                        })
+                    })
                     await this.fe.SendAction({
                         Action: 'STOPPLAYBACK'
                     })
+                    await stoppedTv;
                 }
-                try {
-                    await this.fe.PlayVideo({
-                        Id: videoId + '',
-                        UseBookmark: false
-                    })
-                } catch (err) {
-                    console.error(err)
-                    if (await this.fe.isWatching()) {
-                        // Try again if was watching
-                        try {
-                            await this.fe.PlayVideo({
-                                Id: videoId + '',
-                                UseBookmark: false
-                            })
-                        } catch (err) {
-                            console.error('Failed to play video')
-                        }
-                    }
-                }
+                await this.fe.PlayVideo({
+                    Id: videoId + '',
+                    UseBookmark: false
+                })
             }
         }
 
