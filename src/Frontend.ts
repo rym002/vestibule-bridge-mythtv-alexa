@@ -31,7 +31,7 @@ class AlexaEventFrontend {
     constructor(readonly alexaEmitter: AlexaEndpointEmitter, private readonly fe: MythEventFrontend) {
         this.mythEventEmitter = fe.mythEventEmitter
         fe.mythEventEmitter.on('post', (eventType, message) => {
-            this.alexaEmitter.completeDelta(this.fe.eventDeltaId());
+            this.alexaEmitter.completeDeltaState(this.fe.eventDeltaId());
         })
     }
 }
