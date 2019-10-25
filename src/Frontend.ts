@@ -1,7 +1,7 @@
 import { providersEmitter } from "@vestibule-link/bridge-assistant";
 import { AlexaEndpointEmitter } from "@vestibule-link/bridge-assistant-alexa";
 import { frontends, mergeObject, MythEventFrontend } from "@vestibule-link/bridge-mythtv";
-import { LocalEndpoint } from "@vestibule-link/iot-types";
+import { LocalEndpoint, EndpointState, SubType, ErrorHolder } from "@vestibule-link/iot-types";
 import { masterBackend, Frontend } from "mythtv-services-api";
 import FrontendChannel from "./MythChannelController";
 import FrontendHealth from "./MythEndpointHealth";
@@ -24,14 +24,54 @@ export const MANUFACTURER_NAME = 'MythTV'
 
 export interface MythAlexaEventFrontend extends MythEventFrontend {
     readonly alexaEmitter: AlexaEndpointEmitter
+    monitorStateChange<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(namespace: NS, expected?: {
+        name: N, value: SubType<SubType<EndpointState, NS>, N>
+    }): Promise<EndpointState>;
 }
 
-class AlexaEventFrontend {
+export class AlexaEventFrontend {
     readonly mythEventEmitter: MythSenderEventEmitter
     constructor(readonly alexaEmitter: AlexaEndpointEmitter, private readonly fe: MythEventFrontend) {
         this.mythEventEmitter = fe.mythEventEmitter
         fe.mythEventEmitter.on('post', (eventType, message) => {
             this.alexaEmitter.completeDeltaState(this.fe.eventDeltaId());
+        })
+    }
+    monitorStateChange<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(namespace: NS, expected?: {
+        name: N, value: SubType<SubType<EndpointState, NS>, N>
+    }): Promise<EndpointState | undefined> {
+        return new Promise((resolve, reject) => {
+            if (expected) {
+                const currentState = this.alexaEmitter.endpoint;
+                if (currentState[namespace]) {
+                    const namespaceValue = currentState[namespace];
+                    if (namespaceValue[expected.name] == expected.value) {
+                        resolve()
+                        return;
+                    }
+                }
+            }
+            const alexaStateEmitter = this.alexaEmitter.alexaStateEmitter;
+            const timeoutId = setTimeout(() => {
+                alexaStateEmitter.removeListener(namespace, listener)
+                const error: ErrorHolder = {
+                    errorType: 'Alexa',
+                    errorPayload: {
+                        type: 'ENDPOINT_BUSY',
+                        message: 'State Timeout'
+                    }
+                }
+                reject(error)
+            }, 1000);
+            const listener: (name: N, value: SubType<SubType<EndpointState, NS>, N>) => void = (name, value) => {
+                clearTimeout(timeoutId);
+                resolve({
+                    [namespace]: {
+                        [name]: value
+                    }
+                })
+            }
+            alexaStateEmitter.once(namespace, listener)
         })
     }
 }

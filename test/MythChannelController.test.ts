@@ -4,6 +4,7 @@ import { ApiTypes } from 'mythtv-services-api';
 import { createSandbox } from 'sinon';
 import Handler from '../src/MythChannelController';
 import { ActionMessage, createBackendNock, createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, verifyActionDirective, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
+import { EndpointState } from '@vestibule-link/iot-types';
 
 
 describe('MythChannelController', function () {
@@ -12,6 +13,9 @@ describe('MythChannelController', function () {
         const frontend = await createMockFrontend('channel');
         new Handler(frontend)
         this.currentTest['frontend'] = frontend
+        frontend.alexaEmitter.endpoint['Alexa.PlaybackStateReporter'] = {
+            playbackState: 'PLAYING'
+        }
     })
     afterEach(function () {
         sandbox.restore()
@@ -20,6 +24,11 @@ describe('MythChannelController', function () {
     const currentChannel: ChannelController.Channel = {
         affiliateCallSign: 'CS',
         number: '150'
+    }
+    const returnState: EndpointState = {
+        'Alexa.ChannelController': {
+            channel: currentChannel
+        }
     }
     function createFrontendChannelNock(frontend: MockMythAlexaEventFrontend) {
         return createFrontendNock(frontend.hostname())
@@ -195,8 +204,8 @@ describe('MythChannelController', function () {
                     }, getChannelChangeActions('100'), {
                         error: false,
                         payload: {},
-                        stateChange: undefined
-                    })
+                        stateChange: returnState
+                    }, returnState)
                 })
                 it('should error on invalid channel', async function () {
                     await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
@@ -219,8 +228,8 @@ describe('MythChannelController', function () {
                     }, getChannelChangeActions('200.1'), {
                         error: false,
                         payload: {},
-                        stateChange: undefined
-                    })
+                        stateChange: returnState
+                    }, returnState)
 
                 })
                 it('should prefer the hd callsign', async function () {
@@ -231,8 +240,8 @@ describe('MythChannelController', function () {
                     }, getChannelChangeActions('110'), {
                         error: false,
                         payload: {},
-                        stateChange: undefined
-                    })
+                        stateChange: returnState
+                    }, returnState)
                 })
                 it('should prefer the dt callsign', async function () {
                     await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
@@ -242,8 +251,8 @@ describe('MythChannelController', function () {
                     }, getChannelChangeActions('155'), {
                         error: false,
                         payload: {},
-                        stateChange: undefined
-                    })
+                        stateChange: returnState
+                    }, returnState)
                 })
                 it('should prefer hd over dt', async function () {
                     await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
@@ -253,8 +262,8 @@ describe('MythChannelController', function () {
                     }, getChannelChangeActions('185'), {
                         error: false,
                         payload: {},
-                        stateChange: undefined
-                    })
+                        stateChange: returnState
+                    }, returnState)
                 })
                 it('should error on not found', async function () {
                     await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
@@ -284,8 +293,8 @@ describe('MythChannelController', function () {
                     }, getChannelChangeActions('200.0'), {
                         error: false,
                         payload: {},
-                        stateChange: undefined
-                    })
+                        stateChange: returnState
+                    },returnState)
                 })
                 it('should change to the hd channel name', async function () {
                     await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
@@ -298,8 +307,8 @@ describe('MythChannelController', function () {
                     }, getChannelChangeActions('110'), {
                         error: false,
                         payload: {},
-                        stateChange: undefined
-                    })
+                        stateChange: returnState
+                    },returnState)
                 })
             })
         })
@@ -313,8 +322,8 @@ describe('MythChannelController', function () {
                 }, getChannelChangeActions('180'), {
                     error: false,
                     payload: {},
-                    stateChange: undefined
-                })
+                    stateChange: returnState
+                },returnState)
             })
             it('should channel down', async function () {
                 await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'SkipChannels', {
@@ -322,8 +331,8 @@ describe('MythChannelController', function () {
                 }, getChannelChangeActions('100'), {
                     error: false,
                     payload: {},
-                    stateChange: undefined
-                })
+                    stateChange: returnState
+                },returnState)
             })
             it('should wrap around channel up', async function () {
                 await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'SkipChannels', {
@@ -331,8 +340,8 @@ describe('MythChannelController', function () {
                 }, getChannelChangeActions('100'), {
                     error: false,
                     payload: {},
-                    stateChange: undefined
-                })
+                    stateChange: returnState
+                },returnState)
             })
             it('should wrap around channel down', async function () {
                 await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'SkipChannels', {
@@ -340,8 +349,8 @@ describe('MythChannelController', function () {
                 }, getChannelChangeActions('200.1'), {
                     error: false,
                     payload: {},
-                    stateChange: undefined
-                })
+                    stateChange: returnState
+                },returnState)
             })
         })
     })

@@ -13,6 +13,9 @@ describe('MythRemoteVideoPlayer', function () {
         const frontend = await createMockFrontend('remoteVideo');
         new Handler(frontend)
         this.currentTest['frontend'] = frontend
+        frontend.alexaEmitter.endpoint['Alexa.PlaybackStateReporter'] = {
+            playbackState: 'PLAYING'
+        }
     })
     afterEach(function () {
         sandbox.restore()

@@ -1,12 +1,13 @@
-import { PlaybackController } from '@vestibule-link/alexa-video-skill-types';
+import { PlaybackController, PlaybackStateReporter } from '@vestibule-link/alexa-video-skill-types';
 import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from '@vestibule-link/bridge-assistant-alexa';
-import { SubType } from '@vestibule-link/iot-types';
+import { SubType, EndpointState } from '@vestibule-link/iot-types';
 import { MythAlexaEventFrontend } from "./Frontend";
 
 type DirectiveType = PlaybackController.NamespaceType;
 const DirectiveName: DirectiveType = PlaybackController.namespace;
 type Response = {
     payload: {}
+    state?: { 'Alexa.PlaybackStateReporter'?: SubType<EndpointState, 'Alexa.PlaybackStateReporter'> }
 }
 export default class FrontendPlayback
     implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter {
@@ -20,68 +21,41 @@ export default class FrontendPlayback
         this.fe.alexaEmitter.emit('capability', DirectiveName, this.supported, deltaId);
     }
 
-    async Play(payload: {}): Promise<Response> {
+    async sendAction(action: string, expectedPlayback: PlaybackStateReporter.States): Promise<Response> {
+        const stateMonitor = this.fe.monitorStateChange('Alexa.PlaybackStateReporter', {
+            name: 'playbackState',
+            value: expectedPlayback
+        })
         await this.fe.SendAction({
-            Action: 'PLAY'
+            Action: action
         });
         return {
-            payload: {}
+            payload: {},
+            state: await stateMonitor
         }
+    }
+    async Play(payload: {}): Promise<Response> {
+        return this.sendAction('PLAY','PLAYING');
     }
     async Pause(payload: {}): Promise<Response> {
-        await this.fe.SendAction({
-            Action: 'PAUSE'
-        });
-        return {
-            payload: {}
-        }
+        return this.sendAction('PAUSE','PAUSED');
     }
     async FastForward(payload: {}): Promise<Response> {
-        await this.fe.SendAction({
-            Action: 'SEEKFFWD'
-        });
-        return {
-            payload: {}
-        }
+        return this.sendAction('SEEKFFWD','PLAYING');
     }
     async Rewind(payload: {}): Promise<Response> {
-        await this.fe.SendAction({
-            Action: 'SEEKRWND'
-        });
-        return {
-            payload: {}
-        }
+        return this.sendAction('SEEKRWND','PLAYING');
     }
     async Stop(payload: {}): Promise<Response> {
-        await this.fe.SendAction({
-            Action: 'STOPPLAYBACK'
-        });
-        return {
-            payload: {}
-        }
+        return this.sendAction('STOPPLAYBACK','STOPPED');
     }
     async Next(payload: {}): Promise<Response> {
-        await this.fe.SendAction({
-            Action: 'SKIPCOMMERCIAL'
-        });
-        return {
-            payload: {}
-        }
+        return this.sendAction('SKIPCOMMERCIAL','PLAYING');
     }
     async Previous(payload: {}): Promise<Response> {
-        await this.fe.SendAction({
-            Action: 'SKIPCOMMBACK'
-        });
-        return {
-            payload: {}
-        }
+        return this.sendAction('SKIPCOMMBACK','PLAYING');
     }
     async StartOver(payload: {}): Promise<Response> {
-        await this.fe.SendAction({
-            Action: 'JUMPSTART'
-        });
-        return {
-            payload: {}
-        }
+        return this.sendAction('JUMPSTART','PLAYING');
     }
 }

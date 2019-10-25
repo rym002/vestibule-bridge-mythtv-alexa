@@ -1,47 +1,36 @@
-import { MythAlexaEventFrontend, MANUFACTURER_NAME } from "../src/Frontend";
-import nock = require("nock");
-import { frontend, Frontend, ApiTypes } from "mythtv-services-api";
-import { MythSenderEventEmitter } from "mythtv-event-emitter";
-import { EventEmitter } from "events";
-import { AlexaEndpointEmitter } from "@vestibule-link/bridge-assistant-alexa";
-import { providersEmitter, responseRouter } from "@vestibule-link/bridge-assistant";
-import { mergeObject } from "@vestibule-link/bridge-mythtv";
-import { registerAssistant } from "@vestibule-link/bridge-assistant-alexa/dist/endpoint";
-import { SinonSandbox, assert, match } from "sinon";
-import { EndpointCapability, SubType, EndpointState, ResponseMessage, DirectiveResponse } from "@vestibule-link/iot-types";
-import { expect } from 'chai'
-import { MemoizedFunction, memoize } from "lodash";
 import { Directive } from "@vestibule-link/alexa-video-skill-types";
+import { providersEmitter, responseRouter } from "@vestibule-link/bridge-assistant";
+import { AlexaEndpointEmitter } from "@vestibule-link/bridge-assistant-alexa";
+import { registerAssistant } from "@vestibule-link/bridge-assistant-alexa/dist/endpoint";
+import { mergeObject } from "@vestibule-link/bridge-mythtv";
+import { CachingEventFrontend } from "@vestibule-link/bridge-mythtv/dist/frontends";
+import { DirectiveResponse, EndpointCapability, EndpointState, ResponseMessage, SubType } from "@vestibule-link/iot-types";
+import { expect } from 'chai';
+import { EventEmitter } from "events";
+import { memoize, MemoizedFunction,keys } from "lodash";
+import { MythSenderEventEmitter } from "mythtv-event-emitter";
 import { EventMapping } from "mythtv-event-emitter/dist/messages";
-
+import { frontend } from "mythtv-services-api";
+import { assert, match, SinonSandbox } from "sinon";
+import { AlexaEventFrontend, MANUFACTURER_NAME, MythAlexaEventFrontend } from "../src/Frontend";
+import nock = require("nock");
 export interface MockMythAlexaEventFrontend extends MythAlexaEventFrontend {
     resetDeltaId(): void
 }
 class MockAlexaFrontend {
-    readonly mythEventEmitter: MythSenderEventEmitter = new EventEmitter();
+    readonly mythEventEmitter: MythSenderEventEmitter
+    readonly alexaEmitter: AlexaEndpointEmitter
     private readonly memoizeEventDelta: MemoizedFunction
     eventDeltaId: () => symbol
-    constructor(readonly alexaEmitter: AlexaEndpointEmitter, readonly fe: Frontend.Service) {
+    constructor(readonly fe: MythAlexaEventFrontend) {
         const memoizeEventDelta = memoize(() => {
             return Symbol();
         })
         this.eventDeltaId = memoizeEventDelta;
         this.memoizeEventDelta = memoizeEventDelta
+        this.alexaEmitter = fe.alexaEmitter
+        this.mythEventEmitter = fe.mythEventEmitter
     }
-    async isWatchingTv(): Promise<boolean> {
-        const status: ApiTypes.FrontendStatus = await this.fe.GetStatus();
-        const state = status.State.state;
-        return state == 'WatchingLiveTV';
-    }
-    async isWatching(): Promise<boolean> {
-        const status: ApiTypes.FrontendStatus = await this.fe.GetStatus();
-        const state = status.State.state;
-        return state.startsWith('Watching');
-    }
-    async GetRefreshedStatus(): Promise<ApiTypes.FrontendStatus> {
-        return this.fe.GetStatus();
-    }
-
     private clearCache(funct: MemoizedFunction) {
         funct.cache.clear && funct.cache.clear();
     }
@@ -66,18 +55,17 @@ export async function createMockFrontend(hostname: string): Promise<MockMythAlex
             Default: '6547'
         }).reply(200, {
             String: '6547'
-        }).get('/GetSetting').query({
-            Key: 'Theme',
-            HostName: hostname
-        }).reply(200, {
-            String: 'theme'
         });
     registerAssistant();
     const fe = await frontend(hostname);
     const alexaEmitter = <AlexaEndpointEmitter>providersEmitter.getEndpointEmitter('alexa', { provider: MANUFACTURER_NAME, host: fe.hostname() }, true)
-    const alexaFe = new MockAlexaFrontend(alexaEmitter, fe);
-    const mergedFe: MockMythAlexaEventFrontend = mergeObject(alexaFe, fe);
-    return mergedFe;
+    const mythFe = new CachingEventFrontend(fe,new EventEmitter())
+    const mergedMythFe = mergeObject(mythFe,fe);
+    const alexaFe = new AlexaEventFrontend(alexaEmitter,mergedMythFe);
+    const mergedFe = mergeObject(alexaFe, mergedMythFe);
+    const mockFe = new MockAlexaFrontend(mergedFe)
+    const mergedMockFe = mergeObject(mockFe, mergedFe);
+    return mergedMockFe;
 }
 
 export async function verifyRefreshCapability<NS extends keyof EndpointCapability>(sandbox: SinonSandbox, frontend: MythAlexaEventFrontend, isAsync: boolean, expectedNamespace: NS, expectedCapability: SubType<EndpointCapability, NS>) {
@@ -147,7 +135,8 @@ export async function verifyActionDirective<NS extends Directive.Namespaces, N e
     frontend: MythAlexaEventFrontend, namespace: NS, name: N,
     requestMessage: Directive.NamedMessage[NS][N] extends { payload: any } ? Directive.NamedMessage[NS][N]['payload'] : never,
     expectedMythtvActions: ActionMessage[],
-    expectedResponse: ResponseMessage<DirectiveResponse[NS][DN] extends { payload: any } ? DirectiveResponse[NS][DN]['payload'] : never>) {
+    expectedResponse: ResponseMessage<DirectiveResponse[NS][DN] extends { payload: any } ? DirectiveResponse[NS][DN]['payload'] : never>,
+    stateChange?:EndpointState) {
     const messageId = Symbol();
     let frontendNock = createFrontendNock(frontend.hostname())
     expectedMythtvActions.forEach(mythAction => {
@@ -156,6 +145,20 @@ export async function verifyActionDirective<NS extends Directive.Namespaces, N e
                 Action: mythAction.actionName
             }).reply(200, toBool(mythAction.response))
     })
+    if (stateChange){
+        const stateEmitter = <EventEmitter>frontend.alexaEmitter.alexaStateEmitter
+        keys(stateChange).forEach((key)=>{
+            stateEmitter.once('newListener',(event,listener)=>{
+                if (event==key){
+                    process.nextTick(()=>{
+                        keys(stateChange[key]).forEach((stateKey)=>{
+                            frontend.alexaEmitter.alexaStateEmitter.emit(<never>key,<never>stateKey,<never>stateChange[key][stateKey])
+                        })
+                    })
+                }
+            })
+        })
+    }
     const responsePromise = new Promise((resolve, reject) => {
         responseRouter.once(messageId, (response) => {
             try {

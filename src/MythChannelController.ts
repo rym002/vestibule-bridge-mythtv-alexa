@@ -1,4 +1,4 @@
-import { ChannelController } from '@vestibule-link/alexa-video-skill-types';
+import { ChannelController, PlaybackStateReporter } from '@vestibule-link/alexa-video-skill-types';
 import { CapabilityEmitter, DirectiveHandlers, StateEmitter, SupportedDirectives } from '@vestibule-link/bridge-assistant-alexa';
 import { EndpointState, ErrorHolder, SubType } from '@vestibule-link/iot-types';
 import * as Fuse from 'fuse.js';
@@ -9,7 +9,10 @@ type DirectiveType = ChannelController.NamespaceType;
 const DirectiveName: DirectiveType = ChannelController.namespace;
 type Response = {
     payload: {}
-    state?: { [DirectiveName]?: SubType<EndpointState, DirectiveType> }
+    state?: {
+        [DirectiveName]?: SubType<EndpointState, DirectiveType>
+        [PlaybackStateReporter.namespace]?: SubType<EndpointState, PlaybackStateReporter.NamespaceType>
+    }
 }
 
 export default class FrontendChannel
@@ -62,7 +65,7 @@ export default class FrontendChannel
         }
 
         if (chanNum) {
-            await this.sendChannelChange(chanNum, currentChannel != undefined);
+            return this.sendChannelChange(chanNum, currentChannel != undefined);
         } else {
             const err: ErrorHolder = {
                 errorType: 'Alexa.Video',
@@ -73,9 +76,6 @@ export default class FrontendChannel
             };
             throw err;
         }
-        return {
-            payload: {}
-        }
     }
     async SkipChannels(payload: ChannelController.SkipChannelsRequest): Promise<Response> {
         const channelCount = payload.channelCount
@@ -84,9 +84,17 @@ export default class FrontendChannel
             const channelLookup = await ChannelLookup.instance();
             const nextChannel = channelLookup.getSkipChannelNum(currentChannel.number, channelCount);
             if (nextChannel) {
-                await this.sendChannelChange(nextChannel, true);
+                return this.sendChannelChange(nextChannel, true);
             } else {
                 console.log('Unable to find Current Channel %o Channel Count %n', channelCount, currentChannel);
+                const err: ErrorHolder = {
+                    errorType: 'Alexa',
+                    errorPayload: {
+                        message: 'Unable to find Current Channel',
+                        type: 'NOT_SUPPORTED_IN_CURRENT_MODE'
+                    }
+                };
+                throw err;
             }
         } else {
             const err: ErrorHolder = {
@@ -98,12 +106,13 @@ export default class FrontendChannel
             };
             throw err;
         }
-        return {
-            payload: {}
-        }
     }
 
-    async sendChannelChange(chanNum: string, watchingTv: boolean): Promise<void> {
+    async sendChannelChange(chanNum: string, watchingTv: boolean): Promise<Response> {
+        const playingMonitor = this.fe.monitorStateChange('Alexa.PlaybackStateReporter', {
+            name: 'playbackState',
+            value: 'PLAYING'
+        })
         if (!watchingTv) {
             const startedTv = new Promise((resolve, reject) => {
                 const timer = setTimeout(() => {
@@ -126,9 +135,15 @@ export default class FrontendChannel
             });
             await startedTv
         }
-        await this.changeChannel(chanNum)
+        const channelMonitor = await this.changeChannel(chanNum)
+        const playbackState = await playingMonitor || {}
+        return {
+            payload: {},
+            state: { ...playbackState, ...channelMonitor }
+        }
     }
-    private async changeChannel(chanNum: string) {
+    private async changeChannel(chanNum: string): Promise<EndpointState | undefined> {
+        const channelPromise = this.fe.monitorStateChange('Alexa.ChannelController')
         for (const chanPart of chanNum) {
             await this.fe.SendAction({
                 Action: chanPart
@@ -137,6 +152,7 @@ export default class FrontendChannel
         await this.fe.SendAction({
             Action: 'SELECT'
         });
+        return channelPromise;
     }
     async state(): Promise<ChannelController.Channel> {
         if (await this.fe.isWatchingTv()) {

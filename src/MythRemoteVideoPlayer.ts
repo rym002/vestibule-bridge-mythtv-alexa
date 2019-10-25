@@ -1,15 +1,17 @@
 import { RemoteVideoPlayer, Video } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from "@vestibule-link/bridge-assistant-alexa";
-import { SubType, ErrorHolder } from "@vestibule-link/iot-types";
+import { SubType, ErrorHolder, EndpointState } from "@vestibule-link/iot-types";
 import { sortBy } from 'lodash';
 import { masterBackend, ApiTypes } from "mythtv-services-api";
 import { MythAlexaEventFrontend } from "./Frontend";
+import { request } from "https";
 
 
 type DirectiveType = RemoteVideoPlayer.NamespaceType;
 const DirectiveName: DirectiveType = RemoteVideoPlayer.namespace;
 type Response = {
     payload: {}
+    state?: { 'Alexa.PlaybackStateReporter'?: SubType<EndpointState, 'Alexa.PlaybackStateReporter'> }
 }
 export default class FrontendVideoPlayer
     implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter {
@@ -64,44 +66,66 @@ export default class FrontendVideoPlayer
         const searchCriteria: VideoSearchCriteria = convertEntities(payload.entities);
         const recordedId = await this.findRecordedId(searchCriteria);
         if (recordedId) {
+            const stateMonitor = this.getPlaybackStateMonitor()
             await this.fe.PlayRecording({
                 RecordedId: recordedId
             })
+            return {
+                payload: {},
+                state: await stateMonitor
+            }
         } else {
             const videoId = await this.findVideoId(searchCriteria);
             if (videoId) {
-                if (await this.fe.isWatching()) {
-                    const stoppedTv = new Promise((resolve, reject) => {
-                        const timer = setTimeout(() => {
-                            const error: ErrorHolder = {
-                                errorType: 'Alexa',
-                                errorPayload: {
-                                    type: 'ENDPOINT_BUSY',
-                                    message: 'Failed to stop'
-                                }
-                            }
-                            reject(error)
-                        }, 1000);
-                        this.fe.mythEventEmitter.once('PLAY_STOPPED', (message) => {
-                            clearTimeout(timer)
-                            resolve()
-                        })
-                    })
-                    await this.fe.SendAction({
-                        Action: 'STOPPLAYBACK'
-                    })
-                    await stoppedTv;
+                return this.playVideo(videoId);
+            } else {
+                console.log('video not found %j', payload)
+                return {
+                    payload: {}
                 }
-                await this.fe.PlayVideo({
-                    Id: videoId + '',
-                    UseBookmark: false
-                })
             }
         }
-
+    }
+    private getPlaybackStateMonitor() {
+        return this.fe.monitorStateChange('Alexa.PlaybackStateReporter', {
+            name: 'playbackState',
+            value: 'PLAYING'
+        })
+    }
+    private async playVideo(videoId: number) {
+        if (await this.fe.isWatching()) {
+            const stoppedTv = new Promise((resolve, reject) => {
+                const timer = setTimeout(() => {
+                    this.fe.mythEventEmitter.removeListener('PLAY_STOPPED', listener)
+                    const error: ErrorHolder = {
+                        errorType: 'Alexa',
+                        errorPayload: {
+                            type: 'ENDPOINT_BUSY',
+                            message: 'Failed to stop'
+                        }
+                    }
+                    reject(error)
+                }, 1000);
+                const listener = (message) => {
+                    clearTimeout(timer)
+                    resolve()
+                }
+                this.fe.mythEventEmitter.once('PLAY_STOPPED', listener)
+            })
+            await this.fe.SendAction({
+                Action: 'STOPPLAYBACK'
+            })
+            await stoppedTv;
+        }
+        const stateMonitor = this.getPlaybackStateMonitor()
+        await this.fe.PlayVideo({
+            Id: videoId + '',
+            UseBookmark: false
+        })
         return {
-            payload: {}
-        };
+            payload: {},
+            state: await stateMonitor
+        }
     }
     async SearchAndDisplayResults(payload: RemoteVideoPlayer.RequestPayload): Promise<Response> {
         return {

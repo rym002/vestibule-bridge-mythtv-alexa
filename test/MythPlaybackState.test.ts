@@ -55,7 +55,6 @@ describe('MythPlaybackState', function () {
                         }
                     })
                 await verifyRefreshState(this.test['frontend'], PlaybackStateReporter.namespace, 'playbackState', 'PAUSED')
-                expect(feNock.isDone()).to.be.true
             })
             it('should emit PLAYING when watching and playspeed != 0', async function () {
                 const feNock = createFrontendNock(this.test['frontend'].hostname())
@@ -72,7 +71,6 @@ describe('MythPlaybackState', function () {
                         }
                     })
                 await verifyRefreshState(this.test['frontend'], PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
-                expect(feNock.isDone()).to.be.true
             })
             it('should emit STOPPED when not watching', async function () {
                 const feNock = createFrontendNock(this.test['frontend'].hostname())

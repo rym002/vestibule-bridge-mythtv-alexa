@@ -38,30 +38,25 @@ export default class FrontendRecord
     }
 
     async StartRecording(payload: {}): Promise<Response> {
-        await this.fe.SendAction({
-            Action: 'TOGGLERECORD'
-        });
-        return {
-            payload: {},
-            state: {
-                'Alexa.RecordController': {
-                    'RecordingState': 'RECORDING'
-                }
-            }
-        }
+        return this.toggleRecord('RECORDING')
     }
     async StopRecording(payload: {}): Promise<Response> {
+        return this.toggleRecord('NOT_RECORDING')
+    }
+
+    private async toggleRecord(expectedState:RecordController.States):Promise<Response>{
+        const monitorState = this.fe.monitorStateChange('Alexa.RecordController',{
+            name:'RecordingState',
+            value:expectedState
+        })
         await this.fe.SendAction({
             Action: 'TOGGLERECORD'
         });
         return {
             payload: {},
-            state: {
-                'Alexa.RecordController': {
-                    'RecordingState': 'NOT_RECORDING'
-                }
-            }
+            state: await monitorState
         }
+
     }
     async recordState(): Promise<RecordController.States> {
         if (await this.fe.isWatchingTv()) {

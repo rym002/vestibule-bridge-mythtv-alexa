@@ -1,7 +1,6 @@
 import { RecordController } from '@vestibule-link/alexa-video-skill-types';
 import { expect } from 'chai';
 import 'mocha';
-import { Scope } from 'nock';
 import { createSandbox } from 'sinon';
 import Handler from '../src/MythRecordController';
 import { createBackendNock, createFrontendNock, createMockFrontend, verifyActionDirective, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
@@ -66,6 +65,10 @@ describe('MythRecordController', function () {
                         RecordingState: 'RECORDING'
                     }
                 }
+            }, {
+                'Alexa.RecordController': {
+                    RecordingState: 'RECORDING'
+                }
             })
         })
         it('StopRecording should send TOGGLERECORD action', async function () {
@@ -79,6 +82,10 @@ describe('MythRecordController', function () {
                     'Alexa.RecordController': {
                         RecordingState: 'NOT_RECORDING'
                     }
+                }
+            }, {
+                'Alexa.RecordController': {
+                    RecordingState: 'NOT_RECORDING'
                 }
             })
         })
@@ -100,7 +107,6 @@ describe('MythRecordController', function () {
                     }
                 })
             await verifyMythEventState(this.test['frontend'], 'SCHEDULER_RAN', {}, RecordController.namespace, 'RecordingState', 'RECORDING')
-            expect(feNock.isDone()).to.be.true
         })
     })
     context('Alexa Shadow', function () {
@@ -121,7 +127,6 @@ describe('MythRecordController', function () {
                         }
                     })
                 await verifyRefreshState(this.test['frontend'], RecordController.namespace, 'RecordingState', 'RECORDING')
-                expect(feNock.isDone()).to.be.true
             })
             it('should emit NOT_RECORDING not watching TV', async function () {
                 const feNock = createFrontendNock(this.test['frontend'].hostname())
@@ -154,7 +159,6 @@ describe('MythRecordController', function () {
                         }
                     })
                 await verifyRefreshState(this.test['frontend'], RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
-                expect(feNock.isDone()).to.be.true
             })
             it('should emit NOT_RECORDING recording group is LiveTV', async function () {
                 const feNock = createFrontendNock(this.test['frontend'].hostname())
@@ -172,7 +176,6 @@ describe('MythRecordController', function () {
                         }
                     })
                 await verifyRefreshState(this.test['frontend'], RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
-                expect(feNock.isDone()).to.be.true
             })
             it('should emit NOT_RECORDING program id doesnt match', async function () {
                 const feNock = createFrontendNock(this.test['frontend'].hostname())
@@ -190,7 +193,6 @@ describe('MythRecordController', function () {
                         }
                     })
                 await verifyRefreshState(this.test['frontend'], RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
-                expect(feNock.isDone()).to.be.true
             })
         })
         it('refreshCapability should emit RecordingState', async function () {
