@@ -143,12 +143,12 @@ export default class FrontendChannel
         }
     }
     private async changeChannel(chanNum: string): Promise<EndpointState | undefined> {
-        const channelPromise = this.fe.monitorStateChange('Alexa.ChannelController')
         for (const chanPart of chanNum) {
             await this.fe.SendAction({
                 Action: chanPart
             });
         }
+        const channelPromise = this.fe.monitorStateChange('Alexa.ChannelController')
         await this.fe.SendAction({
             Action: 'SELECT'
         });
