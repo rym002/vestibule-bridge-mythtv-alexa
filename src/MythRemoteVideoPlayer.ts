@@ -1,10 +1,9 @@
 import { RemoteVideoPlayer, Video } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from "@vestibule-link/bridge-assistant-alexa";
-import { SubType, ErrorHolder, EndpointState } from "@vestibule-link/iot-types";
+import { EndpointState, SubType } from "@vestibule-link/iot-types";
 import { sortBy } from 'lodash';
-import { masterBackend, ApiTypes } from "mythtv-services-api";
+import { ApiTypes, masterBackend } from "mythtv-services-api";
 import { MythAlexaEventFrontend } from "./Frontend";
-import { request } from "https";
 
 
 type DirectiveType = RemoteVideoPlayer.NamespaceType;
@@ -94,24 +93,7 @@ export default class FrontendVideoPlayer
     }
     private async playVideo(videoId: number) {
         if (await this.fe.isWatching()) {
-            const stoppedTv = new Promise((resolve, reject) => {
-                const timer = setTimeout(() => {
-                    this.fe.mythEventEmitter.removeListener('PLAY_STOPPED', listener)
-                    const error: ErrorHolder = {
-                        errorType: 'Alexa',
-                        errorPayload: {
-                            type: 'ENDPOINT_BUSY',
-                            message: 'Failed to stop'
-                        }
-                    }
-                    reject(error)
-                }, 1000);
-                const listener = (message) => {
-                    clearTimeout(timer)
-                    resolve()
-                }
-                this.fe.mythEventEmitter.once('PLAY_STOPPED', listener)
-            })
+            const stoppedTv = this.fe.monitorMythEvent('PLAY_STOPPED', 1000);
             await this.fe.SendAction({
                 Action: 'STOPPLAYBACK'
             })

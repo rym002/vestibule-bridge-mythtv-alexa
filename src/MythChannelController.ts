@@ -51,16 +51,20 @@ export default class FrontendChannel
         let chanNum = channel.number;
         const channelLookup = await ChannelLookup.instance();
         if (!chanNum) {
-            if (channelMetadata && channelMetadata.name) {
-                chanNum = channelLookup.searchChannelName(channelMetadata.name);
+            if (channel.callSign) {
+                chanNum = channelLookup.searchCallSign(channel.callSign);
             } else if (channel.affiliateCallSign) {
                 chanNum = channelLookup.searchCallSign(channel.affiliateCallSign);
-            } else if (channel.callSign) {
-                chanNum = channelLookup.searchCallSign(channel.callSign);
             }
         } else {
             if (!channelLookup.isValidChanNum(chanNum)) {
                 chanNum = undefined;
+            }
+        }
+        
+        if (!chanNum) {
+            if (channelMetadata && channelMetadata.name) {
+                chanNum = channelLookup.searchChannelName(channelMetadata.name);
             }
         }
 
@@ -114,22 +118,7 @@ export default class FrontendChannel
             value: 'PLAYING'
         })
         if (!watchingTv) {
-            const startedTv = new Promise((resolve, reject) => {
-                const timer = setTimeout(() => {
-                    const error: ErrorHolder = {
-                        errorType: 'Alexa',
-                        errorPayload: {
-                            type: 'INTERNAL_ERROR',
-                            message: 'Failed to start watch TV'
-                        }
-                    }
-                    reject(error)
-                }, 1000);
-                this.fe.mythEventEmitter.once('LIVETV_STARTED', (message) => {
-                    clearTimeout(timer)
-                    resolve()
-                })
-            })
+            const startedTv = this.fe.monitorMythEvent('LIVETV_STARTED', 1000)
             await this.fe.SendAction({
                 Action: 'Live TV'
             });

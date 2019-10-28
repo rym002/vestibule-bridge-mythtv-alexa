@@ -16,6 +16,7 @@ import FrontendSeek from "./MythSeekController";
 import MythTvRecorder from "./MythVideoRecorder";
 import FrontendWol from "./MythWol";
 import { MythSenderEventEmitter } from "mythtv-event-emitter";
+import { EventMapping } from "mythtv-event-emitter/dist/messages";
 
 
 const ALEXA_ENABLED = 'AlexaEnabled';
@@ -73,6 +74,20 @@ export class AlexaEventFrontend {
             }
             alexaStateEmitter.once(namespace, listener)
         })
+    }
+    async monitorMythEvent<T extends keyof EventMapping, P extends EventMapping[T]>(eventName: T, timeout: number): Promise<P>{
+        try {
+            return this.fe.monitorMythEvent(eventName,timeout)
+        }catch(err){
+            const error: ErrorHolder = {
+                errorType: 'Alexa',
+                errorPayload: {
+                    type: 'ENDPOINT_BUSY',
+                    message: err.message
+                }
+            }
+            throw error
+        }
     }
 }
 
