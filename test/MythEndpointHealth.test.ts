@@ -18,10 +18,14 @@ describe('MythEndpointHealth', function () {
     })
     context('MythtTV Events', function () {
         it('CLIENT_CONNECTED event should change state to OK', async function () {
-            await verifyMythEventState(this.test['frontend'], 'CLIENT_CONNECTED', {}, EndpointHealth.namespace, 'connectivity', 'OK')
+            await verifyMythEventState(this.test['frontend'], 'CLIENT_CONNECTED', {
+                SENDER: ''
+            }, EndpointHealth.namespace, 'connectivity', 'OK')
         })
         it('CLIENT_DISCONNECTED event should change state to UNREACHABLE', async function () {
-            await verifyMythEventState(this.test['frontend'], 'CLIENT_DISCONNECTED', {}, EndpointHealth.namespace, 'connectivity', 'UNREACHABLE')
+            await verifyMythEventState(this.test['frontend'], 'CLIENT_DISCONNECTED', {
+                SENDER: ''
+            }, EndpointHealth.namespace, 'connectivity', 'UNREACHABLE')
         })
     })
     context('Alexa Shadow', function () {

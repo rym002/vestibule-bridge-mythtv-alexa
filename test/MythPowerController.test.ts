@@ -20,10 +20,14 @@ describe('MythPowerController', function () {
     })
     context('MythtTV Events', function () {
         it('CLIENT_CONNECTED event should change state to ON', async function () {
-            await verifyMythEventState(this.test['frontend'], 'CLIENT_CONNECTED', {}, PowerController.namespace, 'powerState', 'ON')
+            await verifyMythEventState(this.test['frontend'], 'CLIENT_CONNECTED', {
+                SENDER: ''
+            }, PowerController.namespace, 'powerState', 'ON')
         })
         it('CLIENT_DISCONNECTED event should change state to OFF', async function () {
-            await verifyMythEventState(this.test['frontend'], 'CLIENT_DISCONNECTED', {}, PowerController.namespace, 'powerState', 'OFF')
+            await verifyMythEventState(this.test['frontend'], 'CLIENT_DISCONNECTED', {
+                SENDER: ''
+            }, PowerController.namespace, 'powerState', 'OFF')
         })
     })
     context('Alexa Shadow', function () {

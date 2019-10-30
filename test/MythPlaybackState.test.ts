@@ -17,25 +17,39 @@ describe('MythPlaybackState', function () {
     })
     context('MythtTV Events', function () {
         it('LIVETV_STARTED event should change state to PLAYING', async function () {
-            await verifyMythEventState(this.test['frontend'], 'LIVETV_STARTED', {}, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
+            await verifyMythEventState(this.test['frontend'], 'LIVETV_STARTED', {
+                SENDER: ''
+            }, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
         })
         it('PLAY_CHANGED event should change state to PLAYING', async function () {
-            await verifyMythEventState(this.test['frontend'], 'PLAY_CHANGED', {}, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
+            await verifyMythEventState(this.test['frontend'], 'PLAY_CHANGED', {
+                SENDER: ''
+            }, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
         })
         it('PLAY_STARTED event should change state to PLAYING', async function () {
-            await verifyMythEventState(this.test['frontend'], 'PLAY_STARTED', {}, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
+            await verifyMythEventState(this.test['frontend'], 'PLAY_STARTED', {
+                SENDER: ''
+            }, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
         })
         it('PLAY_UNPAUSED event should change state to PLAYING', async function () {
-            await verifyMythEventState(this.test['frontend'], 'PLAY_UNPAUSED', {}, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
+            await verifyMythEventState(this.test['frontend'], 'PLAY_UNPAUSED', {
+                SENDER: ''
+            }, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
         })
         it('PLAY_PAUSED event should change state to PAUSED', async function () {
-            await verifyMythEventState(this.test['frontend'], 'PLAY_PAUSED', {}, PlaybackStateReporter.namespace, 'playbackState', 'PAUSED')
+            await verifyMythEventState(this.test['frontend'], 'PLAY_PAUSED', {
+                SENDER: ''
+            }, PlaybackStateReporter.namespace, 'playbackState', 'PAUSED')
         })
         it('LIVETV_ENDED event should change state to STOPPED', async function () {
-            await verifyMythEventState(this.test['frontend'], 'LIVETV_ENDED', {}, PlaybackStateReporter.namespace, 'playbackState', 'STOPPED')
+            await verifyMythEventState(this.test['frontend'], 'LIVETV_ENDED', {
+                SENDER: ''
+            }, PlaybackStateReporter.namespace, 'playbackState', 'STOPPED')
         })
         it('PLAY_STOPPED event should change state to STOPPED', async function () {
-            await verifyMythEventState(this.test['frontend'], 'PLAY_STOPPED', {}, PlaybackStateReporter.namespace, 'playbackState', 'STOPPED')
+            await verifyMythEventState(this.test['frontend'], 'PLAY_STOPPED', {
+                SENDER: ''
+            }, PlaybackStateReporter.namespace, 'playbackState', 'STOPPED')
         })
     })
     context('Alexa Shadow', function () {

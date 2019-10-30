@@ -294,7 +294,7 @@ describe('MythChannelController', function () {
                         error: false,
                         payload: {},
                         stateChange: returnState
-                    },returnState)
+                    }, returnState)
                 })
                 it('should change to the hd channel name', async function () {
                     await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
@@ -308,7 +308,7 @@ describe('MythChannelController', function () {
                         error: false,
                         payload: {},
                         stateChange: returnState
-                    },returnState)
+                    }, returnState)
                 })
             })
         })
@@ -323,7 +323,7 @@ describe('MythChannelController', function () {
                     error: false,
                     payload: {},
                     stateChange: returnState
-                },returnState)
+                }, returnState)
             })
             it('should channel down', async function () {
                 await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'SkipChannels', {
@@ -332,7 +332,7 @@ describe('MythChannelController', function () {
                     error: false,
                     payload: {},
                     stateChange: returnState
-                },returnState)
+                }, returnState)
             })
             it('should wrap around channel up', async function () {
                 await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'SkipChannels', {
@@ -341,7 +341,7 @@ describe('MythChannelController', function () {
                     error: false,
                     payload: {},
                     stateChange: returnState
-                },returnState)
+                }, returnState)
             })
             it('should wrap around channel down', async function () {
                 await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'SkipChannels', {
@@ -350,7 +350,7 @@ describe('MythChannelController', function () {
                     error: false,
                     payload: {},
                     stateChange: returnState
-                },returnState)
+                }, returnState)
             })
         })
     })
@@ -360,18 +360,26 @@ describe('MythChannelController', function () {
                 this.currentTest['nocks'] = createStateNocks(this.currentTest['frontend'])
             })
             it('PLAY_CHANGED should change state to current channel', async function () {
-                await verifyMythEventState(this.test['frontend'], 'PLAY_CHANGED', {}, ChannelController.namespace, 'channel', currentChannel)
+                await verifyMythEventState(this.test['frontend'], 'PLAY_CHANGED', {
+                    SENDER: ''
+                }, ChannelController.namespace, 'channel', currentChannel)
             })
             it('LIVETV_STARTED should change state to current channel', async function () {
-                await verifyMythEventState(this.test['frontend'], 'LIVETV_STARTED', {}, ChannelController.namespace, 'channel', currentChannel)
+                await verifyMythEventState(this.test['frontend'], 'LIVETV_STARTED', {
+                    SENDER: ''
+                }, ChannelController.namespace, 'channel', currentChannel)
             })
         })
         context('Exit Watching', function () {
             it('LIVETV_ENDED event should change state to null', async function () {
-                await verifyMythEventState(this.test['frontend'], 'LIVETV_ENDED', {}, ChannelController.namespace, 'channel', null)
+                await verifyMythEventState(this.test['frontend'], 'LIVETV_ENDED', {
+                    SENDER: ''
+                }, ChannelController.namespace, 'channel', null)
             })
             it('PLAY_STOPPED event should change state to null', async function () {
-                await verifyMythEventState(this.test['frontend'], 'PLAY_STOPPED', {}, ChannelController.namespace, 'channel', null)
+                await verifyMythEventState(this.test['frontend'], 'PLAY_STOPPED', {
+                    SENDER: ''
+                }, ChannelController.namespace, 'channel', null)
             })
         })
     })

@@ -106,7 +106,9 @@ describe('MythRecordController', function () {
                         }
                     }
                 })
-            await verifyMythEventState(this.test['frontend'], 'SCHEDULER_RAN', {}, RecordController.namespace, 'RecordingState', 'RECORDING')
+            await verifyMythEventState(this.test['frontend'], 'SCHEDULER_RAN', {
+                SENDER:''
+            }, RecordController.namespace, 'RecordingState', 'RECORDING')
         })
     })
     context('Alexa Shadow', function () {

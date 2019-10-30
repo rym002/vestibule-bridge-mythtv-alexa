@@ -103,6 +103,9 @@ export async function registerFrontends(): Promise<void> {
             const alexaFe = new AlexaEventFrontend(alexaEmitter, fe);
             const mergedFe: MythAlexaEventFrontend = mergeObject(alexaFe, fe);
             buildEndpoint(mergedFe);
+            mergedFe.mythEventEmitter.on('CLIENT_CONNECTED',(message)=>{
+                alexaEmitter.refresh(fe.eventDeltaId())
+            })
         }
     })
     await Promise.all(fePromises)
