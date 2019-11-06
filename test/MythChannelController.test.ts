@@ -1,28 +1,30 @@
 import { ChannelController } from '@vestibule-link/alexa-video-skill-types';
+import { EndpointState } from '@vestibule-link/iot-types';
 import 'mocha';
 import { ApiTypes } from 'mythtv-services-api';
-import { createSandbox } from 'sinon';
 import Handler from '../src/MythChannelController';
-import { ActionMessage, createBackendNock, createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, verifyActionDirective, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
-import { EndpointState } from '@vestibule-link/iot-types';
+import { ActionMessage, createBackendNock, createContextSandbox, createFrontendNock, createMockFrontend, getContextSandbox, getFrontend, MockMythAlexaEventFrontend, restoreSandbox, verifyActionDirective, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
 
 
 describe('MythChannelController', function () {
-    const sandbox = createSandbox()
     beforeEach(async function () {
-        const frontend = await createMockFrontend('channel');
+        createContextSandbox(this)
+        createVideoSourceListMock()
+        const frontend = await createMockFrontend('channel', this);
         new Handler(frontend)
-        this.currentTest['frontend'] = frontend
         frontend.alexaEmitter.endpoint['Alexa.PlaybackStateReporter'] = {
             playbackState: 'PLAYING'
         }
+        frontend.alexaEmitter.endpoint['Alexa.ChannelController'] = {
+            channel: currentChannel
+        }
     })
     afterEach(function () {
-        sandbox.restore()
+        restoreSandbox(this)
     })
 
     const currentChannel: ChannelController.Channel = {
-        affiliateCallSign: 'CS',
+        affiliateCallSign: 'WCB',
         number: '150'
     }
     const returnState: EndpointState = {
@@ -39,136 +41,115 @@ describe('MythChannelController', function () {
                     FrontendStatus: {
                         State: {
                             state: 'WatchingLiveTV',
-                            chanid: 150
+                            chanid: 1150
                         }
                     }
                 }
             })
     }
-    function createBackendChannelInfoNock() {
-        return createBackendNock('Channel')
-            .get('/GetChannelInfo')
-            .query({
-                ChanID: 150
+
+    function setupWatchingTv(frontend: MockMythAlexaEventFrontend) {
+        frontend.mythEventEmitter.emit('LIVETV_STARTED', {
+            SENDER: ''
+        })
+    }
+    function createVideoSourceListMock() {
+        const mythNock = createBackendNock('Myth')
+            .get('/GetSetting').query({
+                Key: 'ChannelOrdering',
+                Default: 'channum'
             }).reply(200, {
-                ChannelInfo: {
-                    ChanId: 150,
-                    ChanNum: currentChannel.number,
-                    CallSign: currentChannel.affiliateCallSign
+                String: 'channum'
+            });
+        const channelMock = createBackendNock('Channel')
+            .get('/GetChannelInfoList')
+            .query({
+                OnlyVisible: true,
+                Details: true,
+                OrderByName: false
+            }).reply(200, function () {
+                const channelInfos: Partial<ApiTypes.ChannelInfo>[] = [
+                    {
+                        ATSCMajorChan: 100,
+                        ATSCMinorChan: 0,
+                        CallSign: 'WAB',
+                        ChannelName: 'Local Station',
+                        ChanNum: '100',
+                        ChanId: 1100
+                    },
+                    {
+                        ATSCMajorChan: 110,
+                        ATSCMinorChan: 0,
+                        CallSign: 'WABHD',
+                        ChannelName: 'Local Station HD',
+                        ChanNum: '110',
+                        ChanId: 1110
+                    },
+                    {
+                        ATSCMajorChan: 150,
+                        ATSCMinorChan: 0,
+                        CallSign: 'WCB',
+                        ChannelName: 'National Station',
+                        ChanNum: '150',
+                        ChanId: 1150
+                    },
+                    {
+                        ATSCMajorChan: 155,
+                        ATSCMinorChan: 0,
+                        CallSign: 'WCBDT',
+                        ChannelName: 'National Station DT',
+                        ChanNum: '155',
+                        ChanId: 1155
+                    },
+                    {
+                        ATSCMajorChan: 180,
+                        ATSCMinorChan: 0,
+                        CallSign: 'WEB',
+                        ChannelName: 'Test Station',
+                        ChanNum: '180',
+                        ChanId: 1180
+                    },
+                    {
+                        ATSCMajorChan: 182,
+                        ATSCMinorChan: 0,
+                        CallSign: 'WEBDT',
+                        ChannelName: 'Test Station DT',
+                        ChanNum: '182',
+                        ChanId: 1182
+                    },
+                    {
+                        ATSCMajorChan: 185,
+                        ATSCMinorChan: 0,
+                        CallSign: 'WEBHD',
+                        ChannelName: 'Test Station HD',
+                        ChanNum: '185',
+                        ChanId: 1185
+                    },
+                    {
+                        ATSCMajorChan: 200,
+                        ATSCMinorChan: 0,
+                        CallSign: 'KAB',
+                        ChannelName: 'Test Channel Skip',
+                        ChanNum: '200.0'
+                    },
+                    {
+                        ATSCMajorChan: 200,
+                        ATSCMinorChan: 1,
+                        CallSign: 'KAB2',
+                        ChannelName: 'Test Channel Skip 2',
+                        ChanNum: '200.1'
+                    }
+                ]
+                return {
+                    ChannelInfoList: {
+                        ChannelInfos: channelInfos
+                    }
                 }
             })
-    }
-    function createStateNocks(frontend: MockMythAlexaEventFrontend) {
-        return [createFrontendChannelNock(frontend), createBackendChannelInfoNock()]
     }
     context('directives', function () {
         before(function () {
-            const channelMock = createBackendNock('Channel')
-                .get('/GetVideoSourceList')
-                .reply(200, function () {
-                    const sources: Partial<ApiTypes.VideoSource>[] = [
-                        {
-                            Id: 1
-                        },
-                        {
-                            Id: 2
-                        }
-                    ]
-                    return {
-                        VideoSourceList: {
-                            VideoSources: sources
-                        }
-                    }
-                }).get('/GetChannelInfoList')
-                .query({
-                    SourceID: 1,
-                    OnlyVisible: true,
-                    Details: true
-                }).reply(200, function () {
-                    const channelInfos: Partial<ApiTypes.ChannelInfo>[] = [
-                        {
-                            ATSCMajorChan: 100,
-                            ATSCMinorChan: 0,
-                            CallSign: 'WAB',
-                            ChannelName: 'Local Station',
-                            ChanNum: '100'
-                        },
-                        {
-                            ATSCMajorChan: 110,
-                            ATSCMinorChan: 0,
-                            CallSign: 'WABHD',
-                            ChannelName: 'Local Station HD',
-                            ChanNum: '110'
-                        },
-                        {
-                            ATSCMajorChan: 150,
-                            ATSCMinorChan: 0,
-                            CallSign: 'WCB',
-                            ChannelName: 'National Station',
-                            ChanNum: '150'
-                        },
-                        {
-                            ATSCMajorChan: 155,
-                            ATSCMinorChan: 0,
-                            CallSign: 'WCBDT',
-                            ChannelName: 'National Station DT',
-                            ChanNum: '155'
-                        },
-                        {
-                            ATSCMajorChan: 180,
-                            ATSCMinorChan: 0,
-                            CallSign: 'WEB',
-                            ChannelName: 'Test Station',
-                            ChanNum: '180'
-                        },
-                        {
-                            ATSCMajorChan: 182,
-                            ATSCMinorChan: 0,
-                            CallSign: 'WEBDT',
-                            ChannelName: 'Test Station DT',
-                            ChanNum: '182'
-                        },
-                        {
-                            ATSCMajorChan: 185,
-                            ATSCMinorChan: 0,
-                            CallSign: 'WEBHD',
-                            ChannelName: 'Test Station HD',
-                            ChanNum: '185'
-                        }
-                    ]
-                    return {
-                        ChannelInfoList: {
-                            ChannelInfos: channelInfos
-                        }
-                    }
-                }).get('/GetChannelInfoList')
-                .query({
-                    SourceID: 2,
-                    OnlyVisible: true,
-                    Details: true
-                }).reply(200, function () {
-                    const channelInfos: Partial<ApiTypes.ChannelInfo>[] = [
-                        {
-                            ATSCMajorChan: 200,
-                            ATSCMinorChan: 0,
-                            CallSign: 'KAB',
-                            ChannelName: 'Test Channel Skip',
-                            ChanNum: '200.0'
-                        },
-                        {
-                            ATSCMajorChan: 200,
-                            ATSCMinorChan: 1,
-                            CallSign: 'KAB2',
-                            ChannelName: 'Test Channel Skip 2',
-                            ChanNum: '200.1'
-                        }
-                    ]
-                    return {
-                        ChannelInfoList: {
-                            ChannelInfos: channelInfos
-                        }
-                    }
-                })
+
         })
         function getChannelChangeActions(channelNum: string): ActionMessage[] {
             const ret: ActionMessage[] = [];
@@ -193,11 +174,11 @@ describe('MythChannelController', function () {
                 }
             }
             beforeEach(function () {
-                this.currentTest['nocks'] = createStateNocks(this.currentTest['frontend'])
+                this.currentTest['nocks'] = setupWatchingTv(getFrontend(this))
             })
             context('channel.number', function () {
                 it('should change to the channel number', async function () {
-                    await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                             number: '100'
                         }
@@ -208,7 +189,7 @@ describe('MythChannelController', function () {
                     }, returnState)
                 })
                 it('should error on invalid channel', async function () {
-                    await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                             number: '900'
                         }
@@ -221,7 +202,7 @@ describe('MythChannelController', function () {
             })
             context('channel.callSign', function () {
                 it('should change to the callsign', async function () {
-                    await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                             callSign: 'KAB2'
                         }
@@ -233,7 +214,7 @@ describe('MythChannelController', function () {
 
                 })
                 it('should prefer the hd callsign', async function () {
-                    await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                             callSign: 'WAB'
                         }
@@ -244,7 +225,7 @@ describe('MythChannelController', function () {
                     }, returnState)
                 })
                 it('should prefer the dt callsign', async function () {
-                    await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                             callSign: 'WCB'
                         }
@@ -255,7 +236,7 @@ describe('MythChannelController', function () {
                     }, returnState)
                 })
                 it('should prefer hd over dt', async function () {
-                    await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                             callSign: 'WEB'
                         }
@@ -266,7 +247,7 @@ describe('MythChannelController', function () {
                     }, returnState)
                 })
                 it('should error on not found', async function () {
-                    await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                             callSign: 'BAD'
                         }
@@ -283,7 +264,7 @@ describe('MythChannelController', function () {
             })
             context('channelMetadata.name', function () {
                 it('should change to the channel name', async function () {
-                    await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                         },
                         channelMetadata: {
@@ -297,7 +278,7 @@ describe('MythChannelController', function () {
                     }, returnState)
                 })
                 it('should change to the hd channel name', async function () {
-                    await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                         },
                         channelMetadata: {
@@ -314,10 +295,10 @@ describe('MythChannelController', function () {
         })
         context('SkipChannels', function () {
             beforeEach(function () {
-                createStateNocks(this.currentTest['frontend'])
+                setupWatchingTv(getFrontend(this))
             })
             it('should channel up', async function () {
-                await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'SkipChannels', {
+                await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'SkipChannels', {
                     channelCount: 2
                 }, getChannelChangeActions('180'), {
                     error: false,
@@ -326,7 +307,7 @@ describe('MythChannelController', function () {
                 }, returnState)
             })
             it('should channel down', async function () {
-                await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'SkipChannels', {
+                await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'SkipChannels', {
                     channelCount: -2
                 }, getChannelChangeActions('100'), {
                     error: false,
@@ -335,7 +316,7 @@ describe('MythChannelController', function () {
                 }, returnState)
             })
             it('should wrap around channel up', async function () {
-                await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'SkipChannels', {
+                await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'SkipChannels', {
                     channelCount: 16
                 }, getChannelChangeActions('100'), {
                     error: false,
@@ -344,7 +325,7 @@ describe('MythChannelController', function () {
                 }, returnState)
             })
             it('should wrap around channel down', async function () {
-                await verifyActionDirective(this.test['frontend'], ChannelController.namespace, 'SkipChannels', {
+                await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'SkipChannels', {
                     channelCount: -12
                 }, getChannelChangeActions('200.1'), {
                     error: false,
@@ -357,27 +338,21 @@ describe('MythChannelController', function () {
     context('MythtTV Events', function () {
         context('Start Watching', function () {
             beforeEach(function () {
-                this.currentTest['nocks'] = createStateNocks(this.currentTest['frontend'])
+                const frontend = getFrontend(this)
+                frontend.mythEventEmitter.emit('LIVETV_STARTED', {
+                    SENDER: ''
+                })
             })
             it('PLAY_CHANGED should change state to current channel', async function () {
-                await verifyMythEventState(this.test['frontend'], 'PLAY_CHANGED', {
-                    SENDER: ''
-                }, ChannelController.namespace, 'channel', currentChannel)
-            })
-            it('LIVETV_STARTED should change state to current channel', async function () {
-                await verifyMythEventState(this.test['frontend'], 'LIVETV_STARTED', {
-                    SENDER: ''
+                await verifyMythEventState(getFrontend(this), 'PLAY_CHANGED', {
+                    SENDER: '',
+                    CHANID: '1150'
                 }, ChannelController.namespace, 'channel', currentChannel)
             })
         })
         context('Exit Watching', function () {
             it('LIVETV_ENDED event should change state to null', async function () {
-                await verifyMythEventState(this.test['frontend'], 'LIVETV_ENDED', {
-                    SENDER: ''
-                }, ChannelController.namespace, 'channel', null)
-            })
-            it('PLAY_STOPPED event should change state to null', async function () {
-                await verifyMythEventState(this.test['frontend'], 'PLAY_STOPPED', {
+                await verifyMythEventState(getFrontend(this), 'LIVETV_ENDED', {
                     SENDER: ''
                 }, ChannelController.namespace, 'channel', null)
             })
@@ -385,11 +360,12 @@ describe('MythChannelController', function () {
     })
     context('Alexa Shadow', function () {
         it('should refreshState', async function () {
-            const nocks = createStateNocks(this.test['frontend'])
-            await verifyRefreshState(this.test['frontend'], ChannelController.namespace, 'channel', currentChannel)
+            createFrontendChannelNock(getFrontend(this))
+            await (<any>getFrontend(this)).initFromState()
+            await verifyRefreshState(getFrontend(this), ChannelController.namespace, 'channel', currentChannel)
         })
         it('refreshCapability should emit powerState', async function () {
-            await verifyRefreshCapability(sandbox, this.test['frontend'], false, ChannelController.namespace, ['channel'])
+            await verifyRefreshCapability(getContextSandbox(this), getFrontend(this), false, ChannelController.namespace, ['channel'])
         })
     })
 })

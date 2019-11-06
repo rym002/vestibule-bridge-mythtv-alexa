@@ -1,110 +1,103 @@
 import { PlaybackStateReporter } from '@vestibule-link/alexa-video-skill-types';
-import { expect } from 'chai';
 import 'mocha';
-import { createSandbox } from 'sinon';
 import Handler from '../src/MythPlaybackState';
-import { createFrontendNock, createMockFrontend, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
+import { createContextSandbox, createFrontendNock, createMockFrontend, getContextSandbox, getFrontend, restoreSandbox, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
 
 describe('MythPlaybackState', function () {
-    const sandbox = createSandbox()
     beforeEach(async function () {
-        const frontend = await createMockFrontend('playbackstate');
+        createContextSandbox(this)
+        const frontend = await createMockFrontend('playbackstate',this);
+        frontend.mythEventEmitter.emit('PLAY_STARTED', {
+            SENDER: ''
+        })
         new Handler(frontend)
-        this.currentTest['frontend'] = frontend
     })
     afterEach(function () {
-        sandbox.restore()
+        restoreSandbox(this)
     })
     context('MythtTV Events', function () {
-        it('LIVETV_STARTED event should change state to PLAYING', async function () {
-            await verifyMythEventState(this.test['frontend'], 'LIVETV_STARTED', {
-                SENDER: ''
-            }, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
-        })
         it('PLAY_CHANGED event should change state to PLAYING', async function () {
-            await verifyMythEventState(this.test['frontend'], 'PLAY_CHANGED', {
+            await verifyMythEventState(getFrontend(this), 'PLAY_CHANGED', {
                 SENDER: ''
             }, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
         })
         it('PLAY_STARTED event should change state to PLAYING', async function () {
-            await verifyMythEventState(this.test['frontend'], 'PLAY_STARTED', {
+            await verifyMythEventState(getFrontend(this), 'PLAY_STARTED', {
                 SENDER: ''
             }, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
         })
         it('PLAY_UNPAUSED event should change state to PLAYING', async function () {
-            await verifyMythEventState(this.test['frontend'], 'PLAY_UNPAUSED', {
+            await verifyMythEventState(getFrontend(this), 'PLAY_UNPAUSED', {
                 SENDER: ''
             }, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
         })
         it('PLAY_PAUSED event should change state to PAUSED', async function () {
-            await verifyMythEventState(this.test['frontend'], 'PLAY_PAUSED', {
+            await verifyMythEventState(getFrontend(this), 'PLAY_PAUSED', {
                 SENDER: ''
             }, PlaybackStateReporter.namespace, 'playbackState', 'PAUSED')
         })
-        it('LIVETV_ENDED event should change state to STOPPED', async function () {
-            await verifyMythEventState(this.test['frontend'], 'LIVETV_ENDED', {
-                SENDER: ''
-            }, PlaybackStateReporter.namespace, 'playbackState', 'STOPPED')
-        })
         it('PLAY_STOPPED event should change state to STOPPED', async function () {
-            await verifyMythEventState(this.test['frontend'], 'PLAY_STOPPED', {
+            await verifyMythEventState(getFrontend(this), 'PLAY_STOPPED', {
                 SENDER: ''
             }, PlaybackStateReporter.namespace, 'playbackState', 'STOPPED')
         })
     })
     context('Alexa Shadow', function () {
         context('refreshState', function () {
-            it('should emit PAUSED when watching and playspeed is 0', async function () {
-                const feNock = createFrontendNock(this.test['frontend'].hostname())
-                    .get('/GetStatus')
-                    .twice()
-                    .reply(200, function () {
-                        return {
-                            FrontendStatus: {
-                                State: {
-                                    state: 'WatchingTv',
-                                    playspeed: 0
+            context('watching', function () {
+                beforeEach(function () {
+                    const frontend = getFrontend(this)
+                    frontend.mythEventEmitter.emit('PLAY_STARTED', {
+                        SENDER: ''
+                    })
+                })
+                it('should emit PAUSED when watching and playspeed is 0', async function () {
+                    const feNock = createFrontendNock(getFrontend(this).hostname())
+                        .get('/GetStatus')
+                        .twice()
+                        .reply(200, function () {
+                            return {
+                                FrontendStatus: {
+                                    State: {
+                                        state: 'WatchingTv',
+                                        playspeed: 0
+                                    }
                                 }
                             }
-                        }
-                    })
-                await verifyRefreshState(this.test['frontend'], PlaybackStateReporter.namespace, 'playbackState', 'PAUSED')
+                        })
+                    await verifyRefreshState(getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', 'PAUSED')
+                })
+                it('should emit PLAYING when watching and playspeed != 0', async function () {
+                    const feNock = createFrontendNock(getFrontend(this).hostname())
+                        .get('/GetStatus')
+                        .twice()
+                        .reply(200, function () {
+                            return {
+                                FrontendStatus: {
+                                    State: {
+                                        state: 'WatchingSomething',
+                                        playspeed: 1
+                                    }
+                                }
+                            }
+                        })
+                    await verifyRefreshState(getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
+                })
             })
-            it('should emit PLAYING when watching and playspeed != 0', async function () {
-                const feNock = createFrontendNock(this.test['frontend'].hostname())
-                    .get('/GetStatus')
-                    .twice()
-                    .reply(200, function () {
-                        return {
-                            FrontendStatus: {
-                                State: {
-                                    state: 'WatchingSomething',
-                                    playspeed: 1
-                                }
-                            }
-                        }
+            context('Not watching', function () {
+                beforeEach(function () {
+                    const frontend = getFrontend(this)
+                    frontend.mythEventEmitter.emit('PLAY_STOPPED', {
+                        SENDER: ''
                     })
-                await verifyRefreshState(this.test['frontend'], PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
-            })
-            it('should emit STOPPED when not watching', async function () {
-                const feNock = createFrontendNock(this.test['frontend'].hostname())
-                    .get('/GetStatus')
-                    .reply(200, function () {
-                        return {
-                            FrontendStatus: {
-                                State: {
-                                    state: 'MainMenu',
-                                    playspeed: 0
-                                }
-                            }
-                        }
-                    })
-                await verifyRefreshState(this.test['frontend'], PlaybackStateReporter.namespace, 'playbackState', 'STOPPED')
-                expect(feNock.isDone()).to.be.true
+                })
+                it('should emit STOPPED when not watching', async function () {
+                    await verifyRefreshState(getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', 'STOPPED')
+                })
             })
         })
         it('refreshCapability should emit playbackState', async function () {
-            await verifyRefreshCapability(sandbox, this.test['frontend'], false, PlaybackStateReporter.namespace, ['playbackState'])
+            await verifyRefreshCapability(getContextSandbox(this), getFrontend(this), false, PlaybackStateReporter.namespace, ['playbackState'])
         })
     })
 })

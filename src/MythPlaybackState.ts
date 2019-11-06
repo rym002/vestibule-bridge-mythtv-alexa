@@ -9,9 +9,6 @@ export default class FrontendPlaybackState
     constructor(readonly fe: MythAlexaEventFrontend) {
         fe.alexaEmitter.on('refreshState', this.refreshState.bind(this));
         fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
-        fe.mythEventEmitter.on('LIVETV_STARTED', message => {
-            this.updatePlayingState(this.fe.eventDeltaId())
-        });
         fe.mythEventEmitter.on('PLAY_CHANGED', message => {
             this.updatePlayingState(this.fe.eventDeltaId())
         });
@@ -23,9 +20,6 @@ export default class FrontendPlaybackState
         });
         fe.mythEventEmitter.on('PLAY_PAUSED', message => {
             this.updatePausedState(this.fe.eventDeltaId())
-        });
-        fe.mythEventEmitter.on('LIVETV_ENDED', message => {
-            this.updateStoppedState(this.fe.eventDeltaId())
         });
         fe.mythEventEmitter.on('PLAY_STOPPED', message => {
             this.updateStoppedState(this.fe.eventDeltaId())
@@ -44,10 +38,10 @@ export default class FrontendPlaybackState
         this.fe.alexaEmitter.emit('capability', DirectiveName, ['playbackState'], deltaId);
     }
     private async playbackState(): Promise<PlaybackStateReporter.States> {
-        if (await this.fe.isWatching()) {
+        if (this.fe.isWatching()) {
             const status = await this.fe.GetStatus();
             const feState = status.State;
-                if (feState.playspeed == '0') {
+            if (feState.playspeed == '0') {
                 return 'PAUSED';
             } else {
                 return 'PLAYING';

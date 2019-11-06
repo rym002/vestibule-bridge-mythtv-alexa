@@ -22,7 +22,7 @@ import { EventMapping } from "mythtv-event-emitter/dist/messages";
 const ALEXA_ENABLED = 'AlexaEnabled';
 const TRUE = "true";
 export const MANUFACTURER_NAME = 'MythTV'
-const STATE_EVENT_TIMEOUT = Number(process.env['MYTHTV_STATE_EVENT_TIMEOUT']||3000)
+const STATE_EVENT_TIMEOUT = Number(process.env['MYTHTV_STATE_EVENT_TIMEOUT'] || 3000)
 export interface MythAlexaEventFrontend extends MythEventFrontend {
     readonly alexaEmitter: AlexaEndpointEmitter
     monitorStateChange<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(namespace: NS, expected?: {
@@ -32,10 +32,15 @@ export interface MythAlexaEventFrontend extends MythEventFrontend {
 
 export class AlexaEventFrontend {
     readonly mythEventEmitter: MythSenderEventEmitter
+    readonly masterBackendEmitter: MythSenderEventEmitter
     constructor(readonly alexaEmitter: AlexaEndpointEmitter, private readonly fe: MythEventFrontend) {
         this.mythEventEmitter = fe.mythEventEmitter
+        this.masterBackendEmitter = fe.masterBackendEmitter
         fe.mythEventEmitter.on('post', (eventType, message) => {
             this.alexaEmitter.completeDeltaState(this.fe.eventDeltaId());
+        })
+        this.fe.addConnectionMonitor('alexa', alexaEmitter, () => {
+            this.alexaEmitter.emit('refreshState', this.fe.eventDeltaId())
         })
     }
     monitorStateChange<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(namespace: NS, expected?: {
@@ -75,10 +80,10 @@ export class AlexaEventFrontend {
             alexaStateEmitter.once(namespace, listener)
         })
     }
-    async monitorMythEvent<T extends keyof EventMapping, P extends EventMapping[T]>(eventName: T, timeout: number): Promise<P>{
+    async monitorMythEvent<T extends keyof EventMapping, P extends EventMapping[T]>(eventName: T, timeout: number): Promise<P> {
         try {
-            return this.fe.monitorMythEvent(eventName,timeout)
-        }catch(err){
+            return this.fe.monitorMythEvent(eventName, timeout)
+        } catch (err) {
             const error: ErrorHolder = {
                 errorType: 'Alexa',
                 errorPayload: {
@@ -103,9 +108,6 @@ export async function registerFrontends(): Promise<void> {
             const alexaFe = new AlexaEventFrontend(alexaEmitter, fe);
             const mergedFe: MythAlexaEventFrontend = mergeObject(alexaFe, fe);
             buildEndpoint(mergedFe);
-            mergedFe.mythEventEmitter.on('CLIENT_CONNECTED',(message)=>{
-                alexaEmitter.refresh(fe.eventDeltaId())
-            })
         }
     })
     await Promise.all(fePromises)

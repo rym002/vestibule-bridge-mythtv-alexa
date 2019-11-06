@@ -37,7 +37,7 @@ export default class FrontendLauncher
     }
     async LaunchTarget(payload: Launcher.Targets): Promise<Response> {
         let action: string | undefined;
-        if (await this.fe.isWatchingTv()) {
+        if (this.fe.isWatchingTv()) {
             action = this.watchingTvActionMappings.get(payload.identifier);
         }
 

@@ -26,11 +26,21 @@ export default class MythTvRecorder
     }
     async SearchAndRecord(payload: VideoRecorder.RequestPayload): Promise<SearchAndRecordResponse> {
         payload.entities.forEach(e => {
-            if (e.type == 'Channel') {
-                e.entityMetadata.channelCallSign
+            switch (e.type) {
+                case 'Channel':
+                    e.entityMetadata.channelCallSign;
+                case 'Video':
+                    e.value
+                case 'Episode':
+                    e.value
+                case 'Season':
+                    e.value
+
             }
         })
-        masterBackend.dvrService
+        masterBackend.guideService.GetProgramList({
+
+        })
         throw 'Not Implemeted'
     }
     async CancelRecording(payload: VideoRecorder.RequestPayload): Promise<Response> {

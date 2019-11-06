@@ -1,31 +1,33 @@
 import { PowerController } from '@vestibule-link/alexa-video-skill-types';
-import { expect } from 'chai';
 import 'mocha';
-import { createSandbox } from 'sinon';
 import Handler from '../src/MythPowerController';
-import { createFrontendNock, createMockFrontend, toBool, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
+import { createContextSandbox, createFrontendNock, createMockFrontend, getContextSandbox, getFrontend, restoreSandbox, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
 
 interface Test {
     data: number
 }
 describe('MythPowerController', function () {
-    const sandbox = createSandbox()
     beforeEach(async function () {
-        const frontend = await createMockFrontend('power');
+        createContextSandbox(this)
+        const frontend = await createMockFrontend('power', this);
+        createFrontendNock(frontend.hostname())
+            .get('/GetStatus')
+            .reply(200, {
+
+            })
         new Handler(frontend)
-        this.currentTest['frontend'] = frontend
     })
     afterEach(function () {
-        sandbox.restore()
+        restoreSandbox(this)
     })
     context('MythtTV Events', function () {
         it('CLIENT_CONNECTED event should change state to ON', async function () {
-            await verifyMythEventState(this.test['frontend'], 'CLIENT_CONNECTED', {
+            await verifyMythEventState(getFrontend(this), 'CLIENT_CONNECTED', {
                 SENDER: ''
             }, PowerController.namespace, 'powerState', 'ON')
         })
         it('CLIENT_DISCONNECTED event should change state to OFF', async function () {
-            await verifyMythEventState(this.test['frontend'], 'CLIENT_DISCONNECTED', {
+            await verifyMythEventState(getFrontend(this), 'CLIENT_DISCONNECTED', {
                 SENDER: ''
             }, PowerController.namespace, 'powerState', 'OFF')
         })
@@ -33,26 +35,20 @@ describe('MythPowerController', function () {
     context('Alexa Shadow', function () {
         context('refreshState', function () {
             it('should emit ON when success response', async function () {
-                const feNock = createFrontendNock(this.test['frontend'].hostname())
-                    .post('/SendAction')
-                    .query({
-                        Action: 'FAKE'
-                    }).reply(200, toBool(false))
-                await verifyRefreshState(this.test['frontend'], PowerController.namespace, 'powerState', 'ON')
-                expect(feNock.isDone()).to.be.true
-
+                getFrontend(this).mythEventEmitter.emit('CLIENT_CONNECTED', {
+                    SENDER: ''
+                })
+                await verifyRefreshState(getFrontend(this), PowerController.namespace, 'powerState', 'ON')
             })
             it('should emit OFF when failed response', async function () {
-                const feNock = createFrontendNock(this.test['frontend'].hostname())
-                    .post('/SendAction')
-                    .query({
-                        Action: 'FAKE'
-                    }).replyWithError('Failed')
-                await verifyRefreshState(this.test['frontend'], PowerController.namespace, 'powerState', 'OFF')
+                getFrontend(this).mythEventEmitter.emit('CLIENT_DISCONNECTED', {
+                    SENDER: ''
+                })
+                await verifyRefreshState(getFrontend(this), PowerController.namespace, 'powerState', 'OFF')
             })
         })
         it('refreshCapability should emit powerState', async function () {
-            await verifyRefreshCapability(sandbox, this.test['frontend'], false, PowerController.namespace, ['powerState'])
+            await verifyRefreshCapability(getContextSandbox(this), getFrontend(this), false, PowerController.namespace, ['powerState'])
         })
     })
 })

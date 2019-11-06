@@ -25,13 +25,10 @@ export default class FrontendPower
         });
     }
     refreshState(deltaId: symbol): void {
-        const promise = this.updatePowerState(deltaId);
-        this.fe.alexaEmitter.watchDeltaUpdate(promise, deltaId);
-    }
-    private async updatePowerState(deltaId: symbol): Promise<void> {
-        const state = await this.powerState();
+        const state = this.powerState();
         this.updateState(state, deltaId);
     }
+
     refreshCapability(deltaId: symbol): void {
         this.fe.alexaEmitter.emit('capability', DirectiveName, ['powerState'], deltaId);
     }
@@ -55,15 +52,7 @@ export default class FrontendPower
         this.fe.alexaEmitter.emit('state', DirectiveName, 'powerState', state, deltaId);
     }
 
-    async powerState(): Promise<PowerController.States> {
-        try {
-            const resp =await this.fe.SendAction({
-                Action: 'FAKE'
-            }, true);
-            return 'ON';
-        } catch (err) {
-            console.error(err)
-            return 'OFF';
-        }
+    powerState(): PowerController.States {
+        return this.fe.isConnected() ? 'ON' : 'OFF'
     }
 }

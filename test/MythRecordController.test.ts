@@ -1,60 +1,21 @@
 import { RecordController } from '@vestibule-link/alexa-video-skill-types';
-import { expect } from 'chai';
 import 'mocha';
-import { createSandbox } from 'sinon';
 import Handler from '../src/MythRecordController';
-import { createBackendNock, createFrontendNock, createMockFrontend, verifyActionDirective, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
+import { createContextSandbox, createFrontendNock, createMockFrontend, getContextSandbox, getFrontend, restoreSandbox, verifyActionDirective, verifyMythEventState, verifyRefreshCapability, verifyRefreshState, createBackendNock } from './MockHelper';
 
 
 describe('MythRecordController', function () {
-    const sandbox = createSandbox()
     beforeEach(async function () {
-        const frontend = await createMockFrontend('record');
+        createContextSandbox(this)
+        const frontend = await createMockFrontend('record', this);
         new Handler(frontend)
-        this.currentTest['frontend'] = frontend;
     })
     afterEach(function () {
-        sandbox.restore()
-    })
-    before(function () {
-        createBackendNock('Dvr')
-            .get("/GetEncoderList")
-            .times(5)
-            .reply(200, function () {
-                return {
-                    EncoderList: {
-                        Encoders: [{
-                            Id: 1,
-                            Connected: true,
-                            Recording: {
-                                Channel: {
-                                    ChanId: "100"
-                                },
-                                Recording: {
-                                    RecGroup: 'LiveTV'
-                                },
-                                ProgramId: 'PROG123'
-                            }
-                        }, {
-                            Id: 2,
-                            Connected: true,
-                            Recording: {
-                                Channel: {
-                                    ChanId: "200"
-                                },
-                                Recording: {
-                                    RecGroup: 'RecGroup1'
-                                },
-                                ProgramId: 'PROG456'
-                            }
-                        }]
-                    }
-                }
-            })
+        restoreSandbox(this)
     })
     context('directives', function () {
         it('StartRecording should send TOGGLERECORD action', async function () {
-            await verifyActionDirective(this.test['frontend'], RecordController.namespace, 'StartRecording', {}, [{
+            await verifyActionDirective(getFrontend(this), RecordController.namespace, 'StartRecording', {}, [{
                 actionName: 'TOGGLERECORD',
                 response: true
             }], {
@@ -72,7 +33,7 @@ describe('MythRecordController', function () {
             })
         })
         it('StopRecording should send TOGGLERECORD action', async function () {
-            await verifyActionDirective(this.test['frontend'], RecordController.namespace, 'StopRecording', {}, [{
+            await verifyActionDirective(getFrontend(this), RecordController.namespace, 'StopRecording', {}, [{
                 actionName: 'TOGGLERECORD',
                 response: true
             }], {
@@ -91,114 +52,194 @@ describe('MythRecordController', function () {
         })
     })
     context('MythtTV Events', function () {
-        it('SCHEDULER_RAN should refresh state', async function () {
-            const feNock = createFrontendNock(this.test['frontend'].hostname())
-                .get('/GetStatus')
-                .twice()
-                .reply(200, function () {
-                    return {
-                        FrontendStatus: {
-                            State: {
-                                state: 'WatchingLiveTV',
-                                chanid: '200',
-                                programid: 'PROG456'
-                            }
+        it('PLAY_CHANGED should provide ChanIdRequest', async function () {
+            const frontend = getFrontend(this);
+            frontend.mythEventEmitter.emit('LIVETV_STARTED', {
+                SENDER: ''
+            })
+            frontend.mythEventEmitter.emit('PLAY_CHANGED', {
+                SENDER: '',
+                CHANID:'201',
+                STARTTIME: new Date('2019-11-05T00:00:00Z')
+            })
+            createBackendNock('Dvr')
+                .get('/GetRecorded')
+                .query({
+                    ChanId: '201',
+                    StartTime: '2019-11-05T00:00:00'
+                })
+                .reply(200, {
+                    Program: {
+                        Recording: {
+                            RecGroup: 'Default'
                         }
                     }
                 })
-            await verifyMythEventState(this.test['frontend'], 'SCHEDULER_RAN', {
-                SENDER:''
-            }, RecordController.namespace, 'RecordingState', 'RECORDING')
+            await verifyMythEventState(frontend, 'SCHEDULER_RAN', {
+                SENDER: ''
+            }, RecordController.namespace, 'RecordingState', 'RECORDING', true)
+        })
+        it('REC_STARTED should update ChanIdRequest StartTime if watching CHANID', async function () {
+            const frontend = getFrontend(this);
+            frontend.mythEventEmitter.emit('LIVETV_STARTED', {
+                SENDER: ''
+            })
+            frontend.mythEventEmitter.emit('PLAY_CHANGED', {
+                SENDER: '',
+                CHANID:'202',
+                STARTTIME: new Date('2019-11-04T00:00:00Z')
+            })
+            frontend.masterBackendEmitter.emit('REC_STARTED', {
+                SENDER: '',
+                CHANID:'202',
+                RECGROUP:'LiveTV',
+                STARTTIME: new Date('2019-11-05T00:00:00Z')
+            })
+            createBackendNock('Dvr')
+                .get('/GetRecorded')
+                .query({
+                    ChanId: '202',
+                    StartTime: '2019-11-05T00:00:00'
+                })
+                .reply(200, {
+                    Program: {
+                        Recording: {
+                            RecGroup: 'Default'
+                        }
+                    }
+                })
+            await verifyMythEventState(frontend, 'SCHEDULER_RAN', {
+                SENDER: ''
+            }, RecordController.namespace, 'RecordingState', 'RECORDING', true)
+        })
+        it('REC_STARTED should not update ChanIdRequest StartTime if different CHANID', async function () {
+            const frontend = getFrontend(this);
+            frontend.mythEventEmitter.emit('LIVETV_STARTED', {
+                SENDER: ''
+            })
+            frontend.mythEventEmitter.emit('PLAY_CHANGED', {
+                SENDER: '',
+                CHANID:'202',
+                STARTTIME: new Date('2019-11-04T00:00:00Z')
+            })
+            frontend.masterBackendEmitter.emit('REC_STARTED', {
+                SENDER: '',
+                CHANID:'200',
+                RECGROUP:'LiveTV',
+                STARTTIME: new Date('2019-11-05T00:00:00Z')
+            })
+            createBackendNock('Dvr')
+                .get('/GetRecorded')
+                .query({
+                    ChanId: '202',
+                    StartTime: '2019-11-04T00:00:00'
+                })
+                .reply(200, {
+                    Program: {
+                        Recording: {
+                            RecGroup: 'Default'
+                        }
+                    }
+                })
+            await verifyMythEventState(frontend, 'SCHEDULER_RAN', {
+                SENDER: ''
+            }, RecordController.namespace, 'RecordingState', 'RECORDING', true)
+        })
+        it('LIVETV_ENDED should emit NOT_RECORDING', async function () {
+            const frontend = getFrontend(this);
+            await verifyMythEventState(frontend, 'LIVETV_ENDED', {
+                SENDER: ''
+            }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
         })
     })
     context('Alexa Shadow', function () {
         context('refreshState', function () {
-            it('should emit RECORDING when watching a channel being recorded', async function () {
-                const feNock = createFrontendNock(this.test['frontend'].hostname())
-                    .get('/GetStatus')
-                    .twice()
-                    .reply(200, function () {
-                        return {
-                            FrontendStatus: {
-                                State: {
-                                    state: 'WatchingLiveTV',
-                                    chanid: '200',
-                                    programid: 'PROG456'
-                                }
-                            }
-                        }
+            context('watching', function () {
+                beforeEach(function () {
+                    const frontend = getFrontend(this)
+                    frontend.mythEventEmitter.emit('PLAY_STARTED', {
+                        SENDER: ''
                     })
-                await verifyRefreshState(this.test['frontend'], RecordController.namespace, 'RecordingState', 'RECORDING')
+                })
+                context('watchingTv', function () {
+                    beforeEach(function () {
+                        const frontend = getFrontend(this)
+                        frontend.mythEventEmitter.emit('LIVETV_STARTED', {
+                            SENDER: ''
+                        })
+                        const feNock = createFrontendNock(frontend.hostname())
+                            .get('/GetStatus')
+                            .reply(200, function () {
+                                return {
+                                    FrontendStatus: {
+                                        State: {
+                                            state: 'WatchingLiveTV',
+                                            chanid: '200' + frontend.hostname(),
+                                            starttime: '2019-11-05T00:00:00Z'
+                                        }
+                                    }
+                                }
+                            })
+                    })
+                    it('should emit RECORDING when RecGroup!=LiveTV', async function () {
+                        createBackendNock('Dvr')
+                            .get('/GetRecorded')
+                            .query({
+                                ChanId: '200' + getFrontend(this).hostname(),
+                                StartTime: '2019-11-05T00:00:00'
+                            })
+                            .reply(200, {
+                                Program: {
+                                    Recording: {
+                                        RecGroup: 'Default'
+                                    }
+                                }
+                            })
+                        await verifyRefreshState(getFrontend(this), RecordController.namespace, 'RecordingState', 'RECORDING')
+                    })
+                    it('should emit NOT_RECORDING when RecGroup==LiveTV', async function () {
+                        createBackendNock('Dvr')
+                            .get('/GetRecorded')
+                            .query({
+                                ChanId: '200' + getFrontend(this).hostname(),
+                                StartTime: '2019-11-05T00:00:00'
+                            })
+                            .reply(200, {
+                                Program: {
+                                    Recording: {
+                                        RecGroup: 'LiveTV'
+                                    }
+                                }
+                            })
+                        await verifyRefreshState(getFrontend(this), RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
+                    })
+                })
+                context('not watchingTv', function () {
+                    beforeEach(function () {
+                        const frontend = getFrontend(this)
+                        frontend.mythEventEmitter.emit('LIVETV_ENDED', {
+                            SENDER: ''
+                        })
+                    })
+                    it('should emit NOT_RECORDING', async function () {
+                        await verifyRefreshState(getFrontend(this), RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
+                    })
+                })
             })
-            it('should emit NOT_RECORDING not watching TV', async function () {
-                const feNock = createFrontendNock(this.test['frontend'].hostname())
-                    .get('/GetStatus')
-                    .reply(200, function () {
-                        return {
-                            FrontendStatus: {
-                                State: {
-                                    state: 'MainMenu'
-                                }
-                            }
-                        }
+            context('Not watching', function () {
+                beforeEach(function () {
+                    const frontend = getFrontend(this)
+                    frontend.mythEventEmitter.emit('PLAY_STOPPED', {
+                        SENDER: ''
                     })
-                await verifyRefreshState(this.test['frontend'], RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
-                expect(feNock.isDone()).to.be.true
-            })
-            it('should emit NOT_RECORDING watching a different channel', async function () {
-                const feNock = createFrontendNock(this.test['frontend'].hostname())
-                    .get('/GetStatus')
-                    .twice()
-                    .reply(200, function () {
-                        return {
-                            FrontendStatus: {
-                                State: {
-                                    state: 'WatchingLiveTV',
-                                    chanid: '1001',
-                                    programid: 'PROG123'
-                                }
-                            }
-                        }
-                    })
-                await verifyRefreshState(this.test['frontend'], RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
-            })
-            it('should emit NOT_RECORDING recording group is LiveTV', async function () {
-                const feNock = createFrontendNock(this.test['frontend'].hostname())
-                    .get('/GetStatus')
-                    .twice()
-                    .reply(200, function () {
-                        return {
-                            FrontendStatus: {
-                                State: {
-                                    state: 'WatchingLiveTV',
-                                    chanid: '100',
-                                    programid: 'PROG123'
-                                }
-                            }
-                        }
-                    })
-                await verifyRefreshState(this.test['frontend'], RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
-            })
-            it('should emit NOT_RECORDING program id doesnt match', async function () {
-                const feNock = createFrontendNock(this.test['frontend'].hostname())
-                    .get('/GetStatus')
-                    .twice()
-                    .reply(200, function () {
-                        return {
-                            FrontendStatus: {
-                                State: {
-                                    state: 'WatchingLiveTV',
-                                    chanid: '100',
-                                    programid: 'PROG123X'
-                                }
-                            }
-                        }
-                    })
-                await verifyRefreshState(this.test['frontend'], RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
+                })
+                it('should emit NOT_RECORDING', async function () {
+                    await verifyRefreshState(getFrontend(this), RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
+                })
             })
         })
         it('refreshCapability should emit RecordingState', async function () {
-            await verifyRefreshCapability(sandbox, this.test['frontend'], false, RecordController.namespace, ['RecordingState'])
+            await verifyRefreshCapability(getContextSandbox(this), getFrontend(this), false, RecordController.namespace, ['RecordingState'])
         })
     })
 

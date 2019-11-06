@@ -1,29 +1,30 @@
 import { EndpointHealth } from '@vestibule-link/alexa-video-skill-types';
-import { expect } from 'chai';
 import 'mocha';
 import { createSandbox } from 'sinon';
 import Handler from '../src/MythEndpointHealth';
-import { createFrontendNock, createMockFrontend, toBool, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
+import { createMockFrontend, verifyMythEventState, verifyRefreshCapability, verifyRefreshState, createContextSandbox, restoreSandbox, getContextSandbox, getFrontend } from './MockHelper';
 
 
 describe('MythEndpointHealth', function () {
-    const sandbox = createSandbox()
     this.beforeEach(async function () {
-        const frontend = await createMockFrontend('endpointhealth');
+        createContextSandbox(this)
+        const frontend = await createMockFrontend('endpointhealth', this);
+        frontend.mythEventEmitter.emit('CLIENT_CONNECTED', {
+            SENDER: ''
+        })
         new Handler(frontend)
-        this.currentTest['frontend'] = frontend
     })
     afterEach(function () {
-        sandbox.restore()
+        restoreSandbox(this)
     })
     context('MythtTV Events', function () {
         it('CLIENT_CONNECTED event should change state to OK', async function () {
-            await verifyMythEventState(this.test['frontend'], 'CLIENT_CONNECTED', {
+            await verifyMythEventState(getFrontend(this), 'CLIENT_CONNECTED', {
                 SENDER: ''
             }, EndpointHealth.namespace, 'connectivity', 'OK')
         })
         it('CLIENT_DISCONNECTED event should change state to UNREACHABLE', async function () {
-            await verifyMythEventState(this.test['frontend'], 'CLIENT_DISCONNECTED', {
+            await verifyMythEventState(getFrontend(this), 'CLIENT_DISCONNECTED', {
                 SENDER: ''
             }, EndpointHealth.namespace, 'connectivity', 'UNREACHABLE')
         })
@@ -31,26 +32,20 @@ describe('MythEndpointHealth', function () {
     context('Alexa Shadow', function () {
         context('refreshState', function () {
             it('should emit OK when success response', async function () {
-                const feNock = createFrontendNock(this.test['frontend'].hostname())
-                    .post('/SendAction')
-                    .query({
-                        Action: 'FAKE'
-                    }).reply(200, toBool(false))
-                await verifyRefreshState(this.test['frontend'], EndpointHealth.namespace, 'connectivity', 'OK')
-                expect(feNock.isDone()).to.be.true
-
+                getFrontend(this).mythEventEmitter.emit('CLIENT_CONNECTED', {
+                    SENDER: ''
+                })
+                await verifyRefreshState(getFrontend(this), EndpointHealth.namespace, 'connectivity', 'OK')
             })
             it('should emit UNREACHABLE when failed response', async function () {
-                const feNock = createFrontendNock(this.test['frontend'].hostname())
-                    .post('/SendAction')
-                    .query({
-                        Action: 'FAKE'
-                    }).replyWithError('Failed')
-                await verifyRefreshState(this.test['frontend'], EndpointHealth.namespace, 'connectivity', 'UNREACHABLE')
+                getFrontend(this).mythEventEmitter.emit('CLIENT_DISCONNECTED', {
+                    SENDER: ''
+                })
+                await verifyRefreshState(getFrontend(this), EndpointHealth.namespace, 'connectivity', 'UNREACHABLE')
             })
         })
         it('refreshCapability should emit powerState', async function () {
-            await verifyRefreshCapability(sandbox, this.test['frontend'], false, EndpointHealth.namespace, ['connectivity'])
+            await verifyRefreshCapability(getContextSandbox(this), getFrontend(this), false, EndpointHealth.namespace, ['connectivity'])
         })
     })
 })

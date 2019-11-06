@@ -4,7 +4,7 @@ import { EndpointState, ErrorHolder, SubType } from '@vestibule-link/iot-types';
 import * as Fuse from 'fuse.js';
 import { masterBackend, ApiTypes } from 'mythtv-services-api';
 import { MythAlexaEventFrontend } from "./Frontend";
-
+import { keyBy, Dictionary } from 'lodash'
 type DirectiveType = ChannelController.NamespaceType;
 const DirectiveName: DirectiveType = ChannelController.namespace;
 type Response = {
@@ -23,21 +23,18 @@ export default class FrontendChannel
         fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
         fe.alexaEmitter.registerDirectiveHandler(DirectiveName, this);
         fe.mythEventEmitter.on('PLAY_CHANGED', message => {
-            this.refreshState(this.fe.eventDeltaId())
-        });
-        fe.mythEventEmitter.on('LIVETV_STARTED', message => {
-            this.refreshState(this.fe.eventDeltaId())
+            if (this.fe.isWatchingTv() && message.CHANID) {
+                const promise = this.updateStateFromChanId(Number(message.CHANID))
+                this.fe.alexaEmitter.watchDeltaUpdate(promise, this.fe.eventDeltaId());
+            }
         });
         fe.mythEventEmitter.on('LIVETV_ENDED', message => {
-            this.updateStoppedState(this.fe.eventDeltaId())
-        });
-        fe.mythEventEmitter.on('PLAY_STOPPED', message => {
             this.updateStoppedState(this.fe.eventDeltaId())
         });
     }
 
     refreshState(deltaId: symbol): void {
-        const promise = this.updateWatchedState(deltaId);
+        const promise = this.updateStateAndChannel(deltaId);
         this.fe.alexaEmitter.watchDeltaUpdate(promise, deltaId);
     }
     refreshCapability(deltaId: symbol): void {
@@ -47,7 +44,6 @@ export default class FrontendChannel
     async ChangeChannel(payload: ChannelController.ChangeChannelRequest): Promise<Response> {
         const channel = payload.channel;
         const channelMetadata = payload.channelMetadata;
-        const currentChannel = await this.state();
         let chanNum = channel.number;
         const channelLookup = await ChannelLookup.instance();
         if (!chanNum) {
@@ -61,7 +57,7 @@ export default class FrontendChannel
                 chanNum = undefined;
             }
         }
-        
+
         if (!chanNum) {
             if (channelMetadata && channelMetadata.name) {
                 chanNum = channelLookup.searchChannelName(channelMetadata.name);
@@ -69,7 +65,7 @@ export default class FrontendChannel
         }
 
         if (chanNum) {
-            return this.sendChannelChange(chanNum, currentChannel != undefined);
+            return this.sendChannelChange(chanNum);
         } else {
             const err: ErrorHolder = {
                 errorType: 'Alexa.Video',
@@ -83,14 +79,14 @@ export default class FrontendChannel
     }
     async SkipChannels(payload: ChannelController.SkipChannelsRequest): Promise<Response> {
         const channelCount = payload.channelCount
-        const currentChannel = await this.state();
-        if (currentChannel) {
+        if (this.fe.isWatchingTv()) {
+            const currentChannel = this.fe.alexaEmitter.endpoint['Alexa.ChannelController'].channel
             const channelLookup = await ChannelLookup.instance();
             const nextChannel = channelLookup.getSkipChannelNum(currentChannel.number, channelCount);
             if (nextChannel) {
-                return this.sendChannelChange(nextChannel, true);
+                return this.sendChannelChange(nextChannel);
             } else {
-                console.log('Unable to find Current Channel %o Channel Count %n', channelCount, currentChannel);
+                console.log('Unable to find Current Channel %o Channel Count %n', currentChannel, channelCount);
                 const err: ErrorHolder = {
                     errorType: 'Alexa',
                     errorPayload: {
@@ -112,13 +108,13 @@ export default class FrontendChannel
         }
     }
 
-    async sendChannelChange(chanNum: string, watchingTv: boolean): Promise<Response> {
+    async sendChannelChange(chanNum: string): Promise<Response> {
         const playingMonitor = this.fe.monitorStateChange('Alexa.PlaybackStateReporter', {
             name: 'playbackState',
             value: 'PLAYING'
         })
-        if (!watchingTv) {
-            const startedTv = this.fe.monitorMythEvent('LIVETV_STARTED', 1000)
+        if (!this.fe.isWatchingTv()) {
+            const startedTv = this.fe.monitorMythEvent('PLAY_CHANGED', 1000)
             await this.fe.SendAction({
                 Action: 'Live TV'
             });
@@ -143,30 +139,45 @@ export default class FrontendChannel
         });
         return channelPromise;
     }
-    async state(): Promise<ChannelController.Channel> {
-        if (await this.fe.isWatchingTv()) {
+    private async state(): Promise<ChannelController.Channel> {
+        if (this.fe.isWatchingTv()) {
             const status = await this.fe.GetStatus();
             const chanId = status.State.chanid;
             if (chanId) {
-                const channelInfo = await masterBackend.channelService.GetChannelInfo({ ChanID: chanId });
-                if (channelInfo) {
-                    const ret: ChannelController.Channel = {
-                        number: channelInfo.ChanNum,
-                        affiliateCallSign: channelInfo.CallSign
-                    }
-                    return ret;
-                }
+                const channelLookup = await ChannelLookup.instance()
+                const channelInfo = channelLookup.getChannelInfoForChanId(chanId);
+                return this.toChannel(channelInfo)
             }
         }
-        return {
-            affiliateCallSign: null,
-            callSign: null,
-            number: null
-        };
+        return this.toChannel(undefined)
+    }
+    private toChannel(channelInfo: ApiTypes.ChannelInfo | undefined): ChannelController.Channel {
+        if (channelInfo) {
+            return {
+                number: channelInfo.ChanNum,
+                affiliateCallSign: channelInfo.CallSign
+            }
+        } else {
+            return {
+                affiliateCallSign: null,
+                callSign: null,
+                number: null
+            }
+        }
     }
 
-    private async updateWatchedState(deltaId: symbol): Promise<void> {
-        this.fe.alexaEmitter.emit('state', DirectiveName, 'channel', await this.state(), deltaId);
+    private async updateStateAndChannel(deltaId: symbol) {
+        const state = await this.state()
+        return this.updateWatchedState(deltaId, state)
+    }
+    private async updateStateFromChanId(chanId: number) {
+        const channelLookup = await ChannelLookup.instance()
+        const channelInfo = channelLookup.getChannelInfoForChanId(chanId);
+        const state = this.toChannel(channelInfo)
+        this.updateWatchedState(this.fe.eventDeltaId(), state)
+    }
+    private updateWatchedState(deltaId: symbol, state: ChannelController.Channel) {
+        this.fe.alexaEmitter.emit('state', DirectiveName, 'channel', state, deltaId);
     }
     private updateStoppedState(deltaId: symbol) {
         this.fe.alexaEmitter.emit('state', DirectiveName, 'channel', null, deltaId);
@@ -192,6 +203,7 @@ class ChannelLookup {
     private readonly callSignToChanNum = new Map<string, string>();
     private channelInfos: ApiTypes.ChannelInfo[] | undefined;
     private channelNameFuse: Fuse<ApiTypes.ChannelInfo, FuseOpt> | undefined;
+    private channelInfoByChanId: Dictionary<ApiTypes.ChannelInfo>
     private hdSuffixes = ['HD', 'DT', ''];
     private static _instance
     private constructor() {
@@ -204,27 +216,16 @@ class ChannelLookup {
         return this._instance;
     }
     private async refreshChannelMap(): Promise<void> {
-        const videoSources = await masterBackend.channelService.GetVideoSourceList();
-        const channelInfoPromises = videoSources.VideoSources.map(async videoSource => {
-            return await masterBackend.channelService.GetChannelInfoList({
-                SourceID: videoSource.Id,
-                OnlyVisible: true,
-                Details: true
-            });
+        const channelOrder = await masterBackend.mythService.GetSetting({
+            Key: 'ChannelOrdering',
+            Default: 'channum'
         })
-        const channelInfoLists = await Promise.all(channelInfoPromises)
-        this.channelInfos = channelInfoLists.map(channelInfoList => {
-            return channelInfoList.ChannelInfos;
-        }).reduce((prev, current) => {
-            return prev.concat(current);
-        }).sort((a, b) => {
-            const majorSort = a.ATSCMajorChan - b.ATSCMajorChan;
-            if (majorSort == 0) {
-                return a.ATSCMinorChan - b.ATSCMinorChan;
-            }
-            return majorSort;
+        const channelInfoList = await masterBackend.channelService.GetChannelInfoList({
+            OnlyVisible: true,
+            Details: true,
+            OrderByName: channelOrder != 'channum'
         })
-
+        this.channelInfos = channelInfoList.ChannelInfos
         this.channelNameFuse = new Fuse(this.channelInfos, new FuseOpt('ChannelName', true));
         this.chanNumToIndex.clear();
         this.channelInfos.forEach((channelInfo, index) => {
@@ -234,6 +235,7 @@ class ChannelLookup {
         this.channelInfos.forEach((channelInfo) => {
             this.callSignToChanNum.set(channelInfo.CallSign, channelInfo.ChanNum);
         })
+        this.channelInfoByChanId = keyBy(this.channelInfos, 'ChanId')
     }
 
     getSkipChannelNum(chanNum: string, channelCount: number): string | undefined {
@@ -281,5 +283,9 @@ class ChannelLookup {
         if (ret.length == 1) {
             return ret[0].item.ChanNum;
         }
+    }
+
+    public getChannelInfoForChanId(chanId: number) {
+        return this.channelInfoByChanId[chanId]
     }
 }

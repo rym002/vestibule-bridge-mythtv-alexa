@@ -1,20 +1,17 @@
 import { SeekController } from '@vestibule-link/alexa-video-skill-types';
-import { expect } from 'chai';
 import 'mocha';
-import { createSandbox } from 'sinon';
 import Handler from '../src/MythSeekController';
-import { createBackendNock, createFrontendNock, createMockFrontend, MockMythAlexaEventFrontend, toBool, verifyActionDirective, verifyRefreshCapability } from './MockHelper';
+import { createBackendNock, createContextSandbox, createMockFrontend, getContextSandbox, getFrontend, restoreSandbox, verifyRefreshCapability } from './MockHelper';
 
 
 describe('MythSeekController', () => {
-    const sandbox = createSandbox()
     beforeEach(async function () {
-        const frontend = await createMockFrontend('seek');
+        createContextSandbox(this)
+        const frontend = await createMockFrontend('seek', this);
         new Handler(frontend)
-        this.currentTest['frontend'] = frontend;
     })
     afterEach(function () {
-        sandbox.restore()
+        restoreSandbox(this)
     })
     context('directives', () => {
         it('should AdjustSeekPosition')
@@ -47,7 +44,7 @@ describe('MythSeekController', () => {
             console.log('d')
         })
         it('refreshCapability should emit true if enabled NetworkControlEnabled is 1', async function () {
-            const hostname = this.test['frontend'].hostname()
+            const hostname = getFrontend(this).hostname()
             const mythNock = createBackendNock('Myth')
                 .get('/GetSetting').query({
                     Key: 'NetworkControlEnabled',
@@ -61,7 +58,7 @@ describe('MythSeekController', () => {
                 }).reply(200, {
                     String: '6546'
                 })
-            await verifyRefreshCapability(sandbox, this.test['frontend'], false, SeekController.namespace, true)
+            await verifyRefreshCapability(getContextSandbox(this), getFrontend(this), false, SeekController.namespace, true)
         })
     })
 })

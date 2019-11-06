@@ -19,27 +19,16 @@ export default class FrontendHealth
         });
     }
     refreshState(deltaId: symbol): void {
-        const promise = this.checkState(deltaId);
-        this.fe.alexaEmitter.watchDeltaUpdate(promise, deltaId);
-    }
-    private async checkState(deltaId: symbol): Promise<void> {
-        const state = await this.endpointState();
+        const state = this.endpointState();
         this.updateState(state, deltaId);
     }
+
     refreshCapability(deltaId: symbol): void {
         this.fe.alexaEmitter.emit('capability', DirectiveName, ['connectivity'], deltaId);
     }
 
-    private async endpointState(): Promise<EndpointHealth.States> {
-        try {
-            await this.fe.SendAction({
-                Action: 'FAKE'
-            }, true);
-            return 'OK';
-        } catch (err) {
-            console.log(err)
-            return 'UNREACHABLE';
-        }
+    private endpointState(): EndpointHealth.States {
+        return this.fe.isConnected() ? 'OK' : 'UNREACHABLE'
     }
     async state(): Promise<SubType<EndpointState, DirectiveType>> {
         return {

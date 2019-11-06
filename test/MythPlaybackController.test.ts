@@ -1,31 +1,29 @@
 import { PlaybackController } from '@vestibule-link/alexa-video-skill-types';
 import 'mocha';
-import { createSandbox } from 'sinon';
 import { MythAlexaEventFrontend } from '../src/Frontend';
 import Handler from '../src/MythPlaybackController';
-import { createMockFrontend, verifyActionDirective, verifyRefreshCapability } from './MockHelper';
+import { createContextSandbox, createMockFrontend, getContextSandbox, getFrontend, restoreSandbox, verifyActionDirective, verifyRefreshCapability } from './MockHelper';
 
 
 describe('MythPlaybackController', function () {
-    const sandbox = createSandbox()
     beforeEach(async function () {
-        const frontend = await createMockFrontend('playback');
+        createContextSandbox(this)
+        const frontend = await createMockFrontend('playback',this);
         new Handler(frontend)
-        this.currentTest['frontend'] = frontend
     })
     afterEach(function () {
-        sandbox.restore()
+        restoreSandbox(this)
     })
     context('directives', function () {
         context('PLAYING', () => {
             beforeEach(function () {
-                const fe = <MythAlexaEventFrontend>this.currentTest['frontend']
+                const fe = getFrontend(this)
                 fe.alexaEmitter.endpoint["Alexa.PlaybackStateReporter"] = {
                     playbackState: 'PLAYING'
                 }
             })
             it('FastForward should send SEEKFFWD action', async function () {
-                await verifyActionDirective(this.test['frontend'], PlaybackController.namespace, 'FastForward', {}, [{
+                await verifyActionDirective(getFrontend(this), PlaybackController.namespace, 'FastForward', {}, [{
                     actionName: 'SEEKFFWD',
                     response: true
                 }], {
@@ -35,7 +33,7 @@ describe('MythPlaybackController', function () {
                 })
             })
             it('Rewind should send SEEKRWND action', async function () {
-                await verifyActionDirective(this.test['frontend'], PlaybackController.namespace, 'Rewind', {}, [{
+                await verifyActionDirective(getFrontend(this), PlaybackController.namespace, 'Rewind', {}, [{
                     actionName: 'SEEKRWND',
                     response: true
                 }], {
@@ -45,7 +43,7 @@ describe('MythPlaybackController', function () {
                 })
             })
             it('Next should send SKIPCOMMERCIAL action', async function () {
-                await verifyActionDirective(this.test['frontend'], PlaybackController.namespace, 'Next', {}, [{
+                await verifyActionDirective(getFrontend(this), PlaybackController.namespace, 'Next', {}, [{
                     actionName: 'SKIPCOMMERCIAL',
                     response: true
                 }], {
@@ -55,25 +53,25 @@ describe('MythPlaybackController', function () {
                 })
             })
             it('Pause should send PAUSE action', async function () {
-                await verifyActionDirective(this.test['frontend'], PlaybackController.namespace, 'Pause', {}, [{
+                await verifyActionDirective(getFrontend(this), PlaybackController.namespace, 'Pause', {}, [{
                     actionName: 'PAUSE',
                     response: true
                 }], {
                     error: false,
                     payload: {},
                     stateChange: {
-                        'Alexa.PlaybackStateReporter':{
-                            'playbackState':'PAUSED'
+                        'Alexa.PlaybackStateReporter': {
+                            'playbackState': 'PAUSED'
                         }
                     }
-                },{
-                    'Alexa.PlaybackStateReporter':{
-                        playbackState:'PAUSED'
+                }, {
+                    'Alexa.PlaybackStateReporter': {
+                        playbackState: 'PAUSED'
                     }
                 })
             })
             it('Previous should send SKIPCOMMBACK action', async function () {
-                await verifyActionDirective(this.test['frontend'], PlaybackController.namespace, 'Previous', {}, [{
+                await verifyActionDirective(getFrontend(this), PlaybackController.namespace, 'Previous', {}, [{
                     actionName: 'SKIPCOMMBACK',
                     response: true
                 }], {
@@ -83,7 +81,7 @@ describe('MythPlaybackController', function () {
                 })
             })
             it('StartOver should send JUMPSTART action', async function () {
-                await verifyActionDirective(this.test['frontend'], PlaybackController.namespace, 'StartOver', {}, [{
+                await verifyActionDirective(getFrontend(this), PlaybackController.namespace, 'StartOver', {}, [{
                     actionName: 'JUMPSTART',
                     response: true
                 }], {
@@ -93,46 +91,46 @@ describe('MythPlaybackController', function () {
                 })
             })
             it('Stop should send STOPPLAYBACK action', async function () {
-                await verifyActionDirective(this.test['frontend'], PlaybackController.namespace, 'Stop', {}, [{
+                await verifyActionDirective(getFrontend(this), PlaybackController.namespace, 'Stop', {}, [{
                     actionName: 'STOPPLAYBACK',
                     response: true
                 }], {
                     error: false,
                     payload: {},
                     stateChange: {
-                        'Alexa.PlaybackStateReporter':{
-                            playbackState:'STOPPED'
+                        'Alexa.PlaybackStateReporter': {
+                            playbackState: 'STOPPED'
                         }
                     }
-                },{
-                    'Alexa.PlaybackStateReporter':{
-                        playbackState:'STOPPED'
+                }, {
+                    'Alexa.PlaybackStateReporter': {
+                        playbackState: 'STOPPED'
                     }
                 })
             })
         })
         context('PAUSED', () => {
             beforeEach(function () {
-                const fe = <MythAlexaEventFrontend>this.currentTest['frontend']
+                const fe = getFrontend(this)
                 fe.alexaEmitter.endpoint["Alexa.PlaybackStateReporter"] = {
                     playbackState: 'PAUSED'
                 }
             })
             it('Play should send PLAY action', async function () {
-                await verifyActionDirective(this.test['frontend'], PlaybackController.namespace, 'Play', {}, [{
+                await verifyActionDirective(getFrontend(this), PlaybackController.namespace, 'Play', {}, [{
                     actionName: 'PLAY',
                     response: true
                 }], {
                     error: false,
                     payload: {},
                     stateChange: {
-                        'Alexa.PlaybackStateReporter':{
-                            playbackState:'PLAYING'
+                        'Alexa.PlaybackStateReporter': {
+                            playbackState: 'PLAYING'
                         }
                     }
-                },{
-                    'Alexa.PlaybackStateReporter':{
-                        playbackState:'PLAYING'
+                }, {
+                    'Alexa.PlaybackStateReporter': {
+                        playbackState: 'PLAYING'
                     }
                 })
             })
@@ -140,7 +138,7 @@ describe('MythPlaybackController', function () {
     })
     context('Alexa Shadow', function () {
         it('refreshCapability should emit All Operations', async function () {
-            await verifyRefreshCapability(sandbox, this.test['frontend'], false, PlaybackController.namespace, ['FastForward', 'Rewind', 'Next', 'Pause', 'Play', 'Previous', 'StartOver', 'Stop'])
+            await verifyRefreshCapability(getContextSandbox(this), getFrontend(this), false, PlaybackController.namespace, ['FastForward', 'Rewind', 'Next', 'Pause', 'Play', 'Previous', 'StartOver', 'Stop'])
         })
     })
 

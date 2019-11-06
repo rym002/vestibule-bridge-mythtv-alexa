@@ -1,25 +1,23 @@
 import { EndpointInfo, generateEndpointId } from '@vestibule-link/iot-types';
 import { expect } from 'chai';
 import 'mocha';
-import { createSandbox } from 'sinon';
 import { getLocalEndpoint, MANUFACTURER_NAME } from '../src/Frontend';
 import Handler from '../src/MythEndpointInfo';
-import { createBackendNock, createMockFrontend } from './MockHelper';
+import { createBackendNock, createContextSandbox, createMockFrontend, getFrontend, restoreSandbox } from './MockHelper';
 
 
 describe('MythEndpointInfo', function () {
-    const sandbox = createSandbox()
     beforeEach(async function () {
-        const frontend = await createMockFrontend('endpointinfo');
+        createContextSandbox(this)
+        const frontend = await createMockFrontend('endpointinfo',this);
         new Handler(frontend)
-        this.currentTest['frontend'] = frontend
     })
     afterEach(function () {
-        sandbox.restore()
+        restoreSandbox(this)
     })
     context('Alexa Shadow', function () {
         it('should refreshInfo', async function () {
-            const frontend = this.test['frontend']
+            const frontend = getFrontend(this)
             const alexaDeviceName = frontend.hostname() + ' Alexa'
             const frontendNock = createBackendNock('Myth')
                 .get('/GetSetting').query({

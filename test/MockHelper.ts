@@ -7,11 +7,11 @@ import { CachingEventFrontend } from "@vestibule-link/bridge-mythtv/dist/fronten
 import { DirectiveResponse, EndpointCapability, EndpointState, ResponseMessage, SubType } from "@vestibule-link/iot-types";
 import { expect } from 'chai';
 import { EventEmitter } from "events";
-import { memoize, MemoizedFunction,keys } from "lodash";
+import { memoize, MemoizedFunction, keys } from "lodash";
 import { MythSenderEventEmitter } from "mythtv-event-emitter";
 import { EventMapping } from "mythtv-event-emitter/dist/messages";
 import { frontend } from "mythtv-services-api";
-import { assert, match, SinonSandbox } from "sinon";
+import { assert, match, SinonSandbox, createSandbox } from "sinon";
 import { AlexaEventFrontend, MANUFACTURER_NAME, MythAlexaEventFrontend } from "../src/Frontend";
 import nock = require("nock");
 export interface MockMythAlexaEventFrontend extends MythAlexaEventFrontend {
@@ -20,6 +20,7 @@ export interface MockMythAlexaEventFrontend extends MythAlexaEventFrontend {
 class MockAlexaFrontend {
     readonly mythEventEmitter: MythSenderEventEmitter
     readonly alexaEmitter: AlexaEndpointEmitter
+    readonly masterBackendEmitter: MythSenderEventEmitter
     private readonly memoizeEventDelta: MemoizedFunction
     eventDeltaId: () => symbol
     constructor(readonly fe: MythAlexaEventFrontend) {
@@ -30,6 +31,7 @@ class MockAlexaFrontend {
         this.memoizeEventDelta = memoizeEventDelta
         this.alexaEmitter = fe.alexaEmitter
         this.mythEventEmitter = fe.mythEventEmitter
+        this.masterBackendEmitter = fe.masterBackendEmitter
     }
     private clearCache(funct: MemoizedFunction) {
         funct.cache.clear && funct.cache.clear();
@@ -46,8 +48,8 @@ export function createFrontendNock(hostname: string) {
 export function createBackendNock(service: string) {
     return nock("http://localhost:6544/" + service)
 }
-export async function createMockFrontend(hostname: string): Promise<MockMythAlexaEventFrontend> {
-    hostname += Date.now()
+export async function createMockFrontend(hostname: string, context: Mocha.Context): Promise<MockMythAlexaEventFrontend> {
+    hostname += Math.random()
     const mythNock = createBackendNock('Myth')
         .get('/GetSetting').query({
             Key: 'FrontendStatusPort',
@@ -59,12 +61,13 @@ export async function createMockFrontend(hostname: string): Promise<MockMythAlex
     registerAssistant();
     const fe = await frontend(hostname);
     const alexaEmitter = <AlexaEndpointEmitter>providersEmitter.getEndpointEmitter('alexa', { provider: MANUFACTURER_NAME, host: fe.hostname() }, true)
-    const mythFe = new CachingEventFrontend(fe,new EventEmitter())
-    const mergedMythFe = mergeObject(mythFe,fe);
-    const alexaFe = new AlexaEventFrontend(alexaEmitter,mergedMythFe);
+    const mythFe = new CachingEventFrontend(fe, new EventEmitter(), new EventEmitter())
+    const mergedMythFe = mergeObject(mythFe, fe);
+    const alexaFe = new AlexaEventFrontend(alexaEmitter, mergedMythFe);
     const mergedFe = mergeObject(alexaFe, mergedMythFe);
     const mockFe = new MockAlexaFrontend(mergedFe)
     const mergedMockFe = mergeObject(mockFe, mergedFe);
+    context.currentTest['frontend'] = mergedMockFe
     return mergedMockFe;
 }
 
@@ -99,7 +102,7 @@ export async function verifyState<NS extends keyof EndpointState, N extends keyo
             try {
                 expect(namespace).to.equal(expectedNamespace)
                 expect(name).to.equal(expectedName)
-                expect(deltaId).to.equal(frontend.eventDeltaId())
+                // expect(deltaId).to.equal(frontend.eventDeltaId())
                 expect(value).eql(expectedState)
                 resolve()
             } catch (err) {
@@ -120,9 +123,13 @@ export async function verifyRefreshState<NS extends keyof EndpointState, N exten
 
 export async function verifyMythEventState<NS extends keyof EndpointState, N extends keyof EndpointState[NS], T extends keyof EventMapping, P extends EventMapping[T]>(
     frontend: MythAlexaEventFrontend, eventType: T, eventMessage: P,
-    expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>) {
+    expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>, emitBackend?: boolean) {
     await verifyState(frontend, expectedNamespace, expectedName, expectedState, () => {
-        frontend.mythEventEmitter.emit(eventType, eventMessage)
+        if (emitBackend) {
+            frontend.masterBackendEmitter.emit(eventType, eventMessage)
+        } else {
+            frontend.mythEventEmitter.emit(eventType, eventMessage)
+        }
     })
 }
 export function toBool(data: boolean) {
@@ -136,7 +143,7 @@ export async function verifyActionDirective<NS extends Directive.Namespaces, N e
     requestMessage: Directive.NamedMessage[NS][N] extends { payload: any } ? Directive.NamedMessage[NS][N]['payload'] : never,
     expectedMythtvActions: ActionMessage[],
     expectedResponse: ResponseMessage<DirectiveResponse[NS][DN] extends { payload: any } ? DirectiveResponse[NS][DN]['payload'] : never>,
-    stateChange?:EndpointState) {
+    stateChange?: EndpointState) {
     const messageId = Symbol();
     let frontendNock = createFrontendNock(frontend.hostname())
     expectedMythtvActions.forEach(mythAction => {
@@ -145,14 +152,14 @@ export async function verifyActionDirective<NS extends Directive.Namespaces, N e
                 Action: mythAction.actionName
             }).reply(200, toBool(mythAction.response))
     })
-    if (stateChange){
+    if (stateChange) {
         const stateEmitter = <EventEmitter>frontend.alexaEmitter.alexaStateEmitter
-        keys(stateChange).forEach((key)=>{
-            stateEmitter.once('newListener',(event,listener)=>{
-                if (event==key){
-                    process.nextTick(()=>{
-                        keys(stateChange[key]).forEach((stateKey)=>{
-                            frontend.alexaEmitter.alexaStateEmitter.emit(<never>key,<never>stateKey,<never>stateChange[key][stateKey])
+        keys(stateChange).forEach((key) => {
+            stateEmitter.once('newListener', (event, listener) => {
+                if (event == key) {
+                    process.nextTick(() => {
+                        keys(stateChange[key]).forEach((stateKey) => {
+                            frontend.alexaEmitter.alexaStateEmitter.emit(<never>key, <never>stateKey, <never>stateChange[key][stateKey])
                         })
                     })
                 }
@@ -177,4 +184,27 @@ export async function verifyActionDirective<NS extends Directive.Namespaces, N e
 export interface ActionMessage {
     actionName: string
     response: boolean
+}
+
+
+export function getFrontend(context: Mocha.Context): MockMythAlexaEventFrontend {
+    return context.currentTest
+        ? context.currentTest['frontend']
+        : context.test['frontend']
+}
+
+export function createContextSandbox(context: Mocha.Context): SinonSandbox {
+    const sandbox = createSandbox({
+        useFakeTimers: true
+    })
+    context.currentTest['sandbox'] = sandbox
+    return sandbox
+}
+
+export function restoreSandbox(context: Mocha.Context) {
+    context.currentTest['sandbox'].restore()
+}
+
+export function getContextSandbox(context: Mocha.Context): SinonSandbox {
+    return context.test['sandbox']
 }

@@ -1,19 +1,18 @@
-import 'mocha'
-import * as nock from 'nock';
-import { loadFrontends } from '@vestibule-link/bridge-mythtv/dist/frontends'
-import { registerAssistant } from '@vestibule-link/bridge-assistant-alexa/dist/endpoint'
-import { registerFrontends, MANUFACTURER_NAME } from '../src/Frontend'
 import { providersEmitter } from '@vestibule-link/bridge-assistant';
-import { expect } from 'chai'
-import { createSandbox } from 'sinon';
+import { registerAssistant } from '@vestibule-link/bridge-assistant-alexa/dist/endpoint';
+import { loadFrontends } from '@vestibule-link/bridge-mythtv/dist/frontends';
+import { expect } from 'chai';
+import 'mocha';
+import * as nock from 'nock';
 import * as nodeArp from 'node-arp';
-
+import { MANUFACTURER_NAME, registerFrontends } from '../src/Frontend';
+import { createContextSandbox, restoreSandbox } from './MockHelper';
 describe('Frontend', () => {
-    const sandbox = createSandbox()
-    after(() => {
-        sandbox.restore()
+    after(function () {
+        restoreSandbox(this)
     })
-    before(async () => {
+    before(async function () {
+        const sandbox = createContextSandbox(this)
         sandbox.stub(nodeArp, 'getMAC')
         const mythNock = nock("http://localhost:6544/Myth")
             .get('/GetFrontends')
@@ -63,6 +62,10 @@ describe('Frontend', () => {
                 HostName: 'hostgood'
             }).reply(200, {
                 String: '2'
+            })
+            .get('/GetHostName')
+            .reply(200, {
+                String: 'hostbackend'
             })
 
         const feNock = nock('http://hostgood:6547/Frontend')

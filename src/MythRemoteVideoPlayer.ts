@@ -92,7 +92,7 @@ export default class FrontendVideoPlayer
         })
     }
     private async playVideo(videoId: number) {
-        if (await this.fe.isWatching()) {
+        if (this.fe.isWatching()) {
             const stoppedTv = this.fe.monitorMythEvent('PLAY_STOPPED', 1000);
             await this.fe.SendAction({
                 Action: 'STOPPLAYBACK'
