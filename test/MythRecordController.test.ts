@@ -52,11 +52,14 @@ describe('MythRecordController', function () {
         })
     })
     context('MythtTV Events', function () {
-        it('PLAY_CHANGED should provide ChanIdRequest', async function () {
+        beforeEach(function(){
             const frontend = getFrontend(this);
             frontend.mythEventEmitter.emit('LIVETV_STARTED', {
                 SENDER: ''
             })
+        })
+        it('PLAY_CHANGED should provide ChanIdRequest', async function () {
+            const frontend = getFrontend(this);
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
                 CHANID:'201',
@@ -81,9 +84,6 @@ describe('MythRecordController', function () {
         })
         it('REC_STARTED should update ChanIdRequest StartTime if watching CHANID', async function () {
             const frontend = getFrontend(this);
-            frontend.mythEventEmitter.emit('LIVETV_STARTED', {
-                SENDER: ''
-            })
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
                 CHANID:'202',
@@ -114,9 +114,6 @@ describe('MythRecordController', function () {
         })
         it('REC_STARTED should not update ChanIdRequest StartTime if different CHANID', async function () {
             const frontend = getFrontend(this);
-            frontend.mythEventEmitter.emit('LIVETV_STARTED', {
-                SENDER: ''
-            })
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
                 CHANID:'202',
@@ -144,6 +141,20 @@ describe('MythRecordController', function () {
             await verifyMythEventState(frontend, 'SCHEDULER_RAN', {
                 SENDER: ''
             }, RecordController.namespace, 'RecordingState', 'RECORDING', true)
+        })
+        it('REC_STARTED should emit NOT_RECORDING', async function () {
+            const frontend = getFrontend(this);
+            frontend.mythEventEmitter.emit('PLAY_CHANGED', {
+                SENDER: '',
+                CHANID:'202',
+                STARTTIME: new Date('2019-11-04T00:00:00Z')
+            })
+            await verifyMythEventState(frontend, 'REC_STARTED', {
+                SENDER: '',
+                CHANID:'202',
+                RECGROUP:'LiveTV',
+                STARTTIME: new Date('2019-11-05T00:00:00Z')
+            }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING', true)
         })
         it('LIVETV_ENDED should emit NOT_RECORDING', async function () {
             const frontend = getFrontend(this);

@@ -38,7 +38,8 @@ export default class FrontendRecord
                 && message.STARTTIME
                 && this.currentProgram
                 && Number(message.CHANID) == this.currentProgram.ChanId) {
-                this.currentProgram['StartTime'] = message.STARTTIME
+                this.currentProgram.StartTime = message.STARTTIME
+                this.updateState('NOT_RECORDING', this.fe.eventDeltaId())
             }
         })
         fe.masterBackendEmitter.on('SCHEDULER_RAN', message => {
@@ -52,7 +53,7 @@ export default class FrontendRecord
             this.updateState('NOT_RECORDING', this.fe.eventDeltaId())
         })
     }
-    refreshState(deltaId: symbol): void {
+    refreshState(deltaId: symbol): void {   
         const promise = this.updateRecordingStateFromStatus(deltaId);
         this.fe.alexaEmitter.watchDeltaUpdate(promise, deltaId);
     }
