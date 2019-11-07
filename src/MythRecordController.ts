@@ -65,9 +65,16 @@ export default class FrontendRecord
         if (this.fe.isWatchingTv()) {
             const status = await this.fe.GetStatus();
             const state = status.State;
-            const recordingState = await this.lookupRecordState({
+            const recordedId = await masterBackend.dvrService.RecordedIdForKey({
                 ChanId: state.chanid,
                 StartTime: state['starttime']
+            })
+            this.currentState = {
+                channel: state.chanid,
+                recordedId: recordedId
+            }
+            const recordingState = await this.lookupRecordState({
+                RecordedId: recordedId
             });
             this.updateState(recordingState, deltaId);
         } else {

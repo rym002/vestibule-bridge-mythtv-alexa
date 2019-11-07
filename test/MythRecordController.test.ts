@@ -200,10 +200,17 @@ describe('MythRecordController', function () {
                     })
                     it('should emit RECORDING when RecGroup!=LiveTV', async function () {
                         createBackendNock('Dvr')
-                            .get('/GetRecorded')
+                            .get('/RecordedIdForKey')
                             .query({
                                 ChanId: '200' + getFrontend(this).hostname(),
                                 StartTime: '2019-11-05T00:00:00'
+                            })
+                            .reply(200, {
+                                int: 300
+                            })
+                            .get('/GetRecorded')
+                            .query({
+                                RecordedId: '300'
                             })
                             .reply(200, {
                                 Program: {
@@ -216,10 +223,17 @@ describe('MythRecordController', function () {
                     })
                     it('should emit NOT_RECORDING when RecGroup==LiveTV', async function () {
                         createBackendNock('Dvr')
-                            .get('/GetRecorded')
+                            .get('/RecordedIdForKey')
                             .query({
                                 ChanId: '200' + getFrontend(this).hostname(),
                                 StartTime: '2019-11-05T00:00:00'
+                            })
+                            .reply(200, {
+                                int: 301
+                            })
+                            .get('/GetRecorded')
+                            .query({
+                                RecordedId: '301'
                             })
                             .reply(200, {
                                 Program: {
