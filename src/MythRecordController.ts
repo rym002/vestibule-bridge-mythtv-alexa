@@ -23,6 +23,7 @@ export default class FrontendRecord
         fe.alexaEmitter.registerDirectiveHandler(DirectiveName, this);
         fe.mythEventEmitter.on('PLAY_CHANGED', message => {
             if (this.fe.isWatchingTv() && message.CHANID && message.STARTTIME) {
+                this.updateState('NOT_RECORDING', this.fe.eventDeltaId())
                 this.currentProgram = {
                     ChanId: Number(message.CHANID),
                     StartTime: message.STARTTIME
@@ -102,6 +103,7 @@ export default class FrontendRecord
     }
     async lookupRecordState(request: DvrService.Request.GetRecorded): Promise<RecordController.States> {
         const recorded = await masterBackend.dvrService.GetRecorded(request)
+        console.log('Request: %j ::: Response: %j',request,recorded)
         return recorded.Recording.RecGroup == 'LiveTV'
             ? 'NOT_RECORDING'
             : 'RECORDING'

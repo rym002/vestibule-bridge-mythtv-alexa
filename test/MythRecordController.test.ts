@@ -52,7 +52,7 @@ describe('MythRecordController', function () {
         })
     })
     context('MythtTV Events', function () {
-        beforeEach(function(){
+        beforeEach(function () {
             const frontend = getFrontend(this);
             frontend.mythEventEmitter.emit('LIVETV_STARTED', {
                 SENDER: ''
@@ -62,7 +62,7 @@ describe('MythRecordController', function () {
             const frontend = getFrontend(this);
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
-                CHANID:'201',
+                CHANID: '201',
                 STARTTIME: new Date('2019-11-05T00:00:00Z')
             })
             createBackendNock('Dvr')
@@ -86,13 +86,13 @@ describe('MythRecordController', function () {
             const frontend = getFrontend(this);
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
-                CHANID:'202',
+                CHANID: '202',
                 STARTTIME: new Date('2019-11-04T00:00:00Z')
             })
             frontend.masterBackendEmitter.emit('REC_STARTED', {
                 SENDER: '',
-                CHANID:'202',
-                RECGROUP:'LiveTV',
+                CHANID: '202',
+                RECGROUP: 'LiveTV',
                 STARTTIME: new Date('2019-11-05T00:00:00Z')
             })
             createBackendNock('Dvr')
@@ -116,13 +116,13 @@ describe('MythRecordController', function () {
             const frontend = getFrontend(this);
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
-                CHANID:'202',
+                CHANID: '202',
                 STARTTIME: new Date('2019-11-04T00:00:00Z')
             })
             frontend.masterBackendEmitter.emit('REC_STARTED', {
                 SENDER: '',
-                CHANID:'200',
-                RECGROUP:'LiveTV',
+                CHANID: '200',
+                RECGROUP: 'LiveTV',
                 STARTTIME: new Date('2019-11-05T00:00:00Z')
             })
             createBackendNock('Dvr')
@@ -142,17 +142,26 @@ describe('MythRecordController', function () {
                 SENDER: ''
             }, RecordController.namespace, 'RecordingState', 'RECORDING', true)
         })
+        it('PLAY_CHANGED should emit NOT_RECORDING', async function () {
+            const frontend = getFrontend(this);
+            await verifyMythEventState(frontend, 'PLAY_CHANGED', {
+                SENDER: '',
+                CHANID: '202',
+                RECGROUP: 'LiveTV',
+                STARTTIME: new Date('2019-11-05T00:00:00Z')
+            }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING', false)
+        })
         it('REC_STARTED should emit NOT_RECORDING', async function () {
             const frontend = getFrontend(this);
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
-                CHANID:'202',
+                CHANID: '202',
                 STARTTIME: new Date('2019-11-04T00:00:00Z')
             })
             await verifyMythEventState(frontend, 'REC_STARTED', {
                 SENDER: '',
-                CHANID:'202',
-                RECGROUP:'LiveTV',
+                CHANID: '202',
+                RECGROUP: 'LiveTV',
                 STARTTIME: new Date('2019-11-05T00:00:00Z')
             }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING', true)
         })
