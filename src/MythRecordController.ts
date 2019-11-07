@@ -3,7 +3,6 @@ import { CapabilityEmitter, DirectiveHandlers, StateEmitter, SupportedDirectives
 import { EndpointState, SubType } from "@vestibule-link/iot-types";
 import { masterBackend, DvrService } from "mythtv-services-api";
 import { MythAlexaEventFrontend } from "./Frontend";
-import { InternalTypes } from "mythtv-services-api/dist/CommonTypes";
 
 
 type DirectiveType = RecordController.NamespaceType;
@@ -14,7 +13,10 @@ type Response = {
 }
 export default class FrontendRecord
     implements SubType<DirectiveHandlers, DirectiveType>, StateEmitter, CapabilityEmitter {
-    private currentProgram?: InternalTypes.ChanIdRequest
+    private currentState?: {
+        channel: number
+        recordedId: number
+    }
     readonly supported: SupportedDirectives<DirectiveType> = ['StartRecording', 'StopRecording'];
     constructor(readonly fe: MythAlexaEventFrontend) {
         const refreshStateBind = this.refreshState.bind(this);
@@ -22,39 +24,39 @@ export default class FrontendRecord
         fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
         fe.alexaEmitter.registerDirectiveHandler(DirectiveName, this);
         fe.mythEventEmitter.on('PLAY_CHANGED', message => {
-            if (this.fe.isWatchingTv() && message.CHANID && message.STARTTIME) {
+            if (this.fe.isWatchingTv() && message.CHANID && message.RECORDEDID) {
                 this.updateState('NOT_RECORDING', this.fe.eventDeltaId())
-                this.currentProgram = {
-                    ChanId: Number(message.CHANID),
-                    StartTime: message.STARTTIME
+                this.currentState = {
+                    channel: Number(message.CHANID),
+                    recordedId: Number(message.RECORDEDID)
                 }
             } else {
-                this.currentProgram = undefined
+                this.currentState = undefined
             }
         })
         fe.masterBackendEmitter.on('REC_STARTED', message => {
             if (this.fe.isWatchingTv()
                 && message.RECGROUP == 'LiveTV'
                 && message.CHANID
-                && message.STARTTIME
-                && this.currentProgram
-                && Number(message.CHANID) == this.currentProgram.ChanId) {
-                this.currentProgram.StartTime = message.STARTTIME
+                && message.RECORDEDID
+                && this.currentState
+                && Number(message.CHANID) == this.currentState.channel) {
+                this.currentState.recordedId = Number(message.RECORDEDID)
                 this.updateState('NOT_RECORDING', this.fe.eventDeltaId())
             }
         })
         fe.masterBackendEmitter.on('SCHEDULER_RAN', message => {
-            if (this.fe.isWatchingTv() && this.currentProgram) {
+            if (this.fe.isWatchingTv() && this.currentState) {
                 const promise = this.updateRecordingStateFromCurrentProgram(this.fe.eventDeltaId());
                 this.fe.alexaEmitter.watchDeltaUpdate(promise, this.fe.eventDeltaId());
             }
         })
         fe.mythEventEmitter.on('LIVETV_ENDED', message => {
-            this.currentProgram = undefined
+            this.currentState = undefined
             this.updateState('NOT_RECORDING', this.fe.eventDeltaId())
         })
     }
-    refreshState(deltaId: symbol): void {   
+    refreshState(deltaId: symbol): void {
         const promise = this.updateRecordingStateFromStatus(deltaId);
         this.fe.alexaEmitter.watchDeltaUpdate(promise, deltaId);
     }
@@ -73,7 +75,9 @@ export default class FrontendRecord
         }
     }
     private async updateRecordingStateFromCurrentProgram(deltaId: symbol): Promise<void> {
-        const recordingState = await this.lookupRecordState(this.currentProgram)
+        const recordingState = await this.lookupRecordState({
+            RecordedId: this.currentState.recordedId
+        })
         this.updateState(recordingState, deltaId);
     }
     refreshCapability(deltaId: symbol): void {
@@ -88,7 +92,7 @@ export default class FrontendRecord
     }
 
     private async toggleRecord(expectedState: RecordController.States): Promise<Response> {
-        const monitorState = this.fe.monitorStateChange('Alexa.RecordController', {
+        const monitorState = this.fe.monitorStateChange(RecordController.namespace, {
             name: 'RecordingState',
             value: expectedState
         })
@@ -103,7 +107,7 @@ export default class FrontendRecord
     }
     async lookupRecordState(request: DvrService.Request.GetRecorded): Promise<RecordController.States> {
         const recorded = await masterBackend.dvrService.GetRecorded(request)
-        console.log('Request: %j ::: Response: %j',request,recorded)
+        console.log('Request: %j ::: Response: %j', request, recorded)
         return recorded.Recording.RecGroup == 'LiveTV'
             ? 'NOT_RECORDING'
             : 'RECORDING'

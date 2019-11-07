@@ -63,13 +63,12 @@ describe('MythRecordController', function () {
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
                 CHANID: '201',
-                STARTTIME: new Date('2019-11-05T00:00:00Z')
+                RECORDEDID: '100'
             })
             createBackendNock('Dvr')
                 .get('/GetRecorded')
                 .query({
-                    ChanId: '201',
-                    StartTime: '2019-11-05T00:00:00'
+                    RecordedId: 100
                 })
                 .reply(200, {
                     Program: {
@@ -87,19 +86,18 @@ describe('MythRecordController', function () {
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
                 CHANID: '202',
-                STARTTIME: new Date('2019-11-04T00:00:00Z')
+                RECORDEDID: '101'
             })
             frontend.masterBackendEmitter.emit('REC_STARTED', {
                 SENDER: '',
                 CHANID: '202',
                 RECGROUP: 'LiveTV',
-                STARTTIME: new Date('2019-11-05T00:00:00Z')
+                RECORDEDID: '102'
             })
             createBackendNock('Dvr')
                 .get('/GetRecorded')
                 .query({
-                    ChanId: '202',
-                    StartTime: '2019-11-05T00:00:00'
+                    RecordedId: 102
                 })
                 .reply(200, {
                     Program: {
@@ -117,19 +115,18 @@ describe('MythRecordController', function () {
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
                 CHANID: '202',
-                STARTTIME: new Date('2019-11-04T00:00:00Z')
+                RECORDEDID: '103'
             })
             frontend.masterBackendEmitter.emit('REC_STARTED', {
                 SENDER: '',
                 CHANID: '200',
                 RECGROUP: 'LiveTV',
-                STARTTIME: new Date('2019-11-05T00:00:00Z')
+                RECORDEDID: '201'
             })
             createBackendNock('Dvr')
                 .get('/GetRecorded')
                 .query({
-                    ChanId: '202',
-                    StartTime: '2019-11-04T00:00:00'
+                    RecordedId: 103
                 })
                 .reply(200, {
                     Program: {
@@ -148,7 +145,7 @@ describe('MythRecordController', function () {
                 SENDER: '',
                 CHANID: '202',
                 RECGROUP: 'LiveTV',
-                STARTTIME: new Date('2019-11-05T00:00:00Z')
+                RECORDEDID: '201'
             }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING', false)
         })
         it('REC_STARTED should emit NOT_RECORDING', async function () {
@@ -156,13 +153,13 @@ describe('MythRecordController', function () {
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
                 CHANID: '202',
-                STARTTIME: new Date('2019-11-04T00:00:00Z')
+                RECORDEDID: '201'
             })
             await verifyMythEventState(frontend, 'REC_STARTED', {
                 SENDER: '',
                 CHANID: '202',
                 RECGROUP: 'LiveTV',
-                STARTTIME: new Date('2019-11-05T00:00:00Z')
+                RECORDEDID: '201'
             }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING', true)
         })
         it('LIVETV_ENDED should emit NOT_RECORDING', async function () {
