@@ -80,7 +80,7 @@ export default class FrontendChannel
     async SkipChannels(payload: ChannelController.SkipChannelsRequest): Promise<Response> {
         const channelCount = payload.channelCount
         if (this.fe.isWatchingTv()) {
-            const currentChannel = this.fe.alexaEmitter.endpoint['Alexa.ChannelController'].channel
+            const currentChannel = this.fe.alexaEmitter.endpoint[ChannelController.namespace].channel
             const channelLookup = await ChannelLookup.instance();
             const nextChannel = channelLookup.getSkipChannelNum(currentChannel.number, channelCount);
             if (nextChannel) {
@@ -109,7 +109,7 @@ export default class FrontendChannel
     }
 
     async sendChannelChange(chanNum: string): Promise<Response> {
-        const playingMonitor = this.fe.monitorStateChange('Alexa.PlaybackStateReporter', {
+        const playingMonitor = this.fe.monitorStateChange(PlaybackStateReporter.namespace, {
             name: 'playbackState',
             value: 'PLAYING'
         })
@@ -133,7 +133,7 @@ export default class FrontendChannel
                 Action: chanPart
             });
         }
-        const channelPromise = this.fe.monitorStateChange('Alexa.ChannelController')
+        const channelPromise = this.fe.monitorStateChange(ChannelController.namespace)
         await this.fe.SendAction({
             Action: 'SELECT'
         });

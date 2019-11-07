@@ -1,4 +1,4 @@
-import { RemoteVideoPlayer, Video } from "@vestibule-link/alexa-video-skill-types";
+import { RemoteVideoPlayer, Video, PlaybackStateReporter } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from "@vestibule-link/bridge-assistant-alexa";
 import { EndpointState, SubType } from "@vestibule-link/iot-types";
 import { sortBy } from 'lodash';
@@ -10,7 +10,7 @@ type DirectiveType = RemoteVideoPlayer.NamespaceType;
 const DirectiveName: DirectiveType = RemoteVideoPlayer.namespace;
 type Response = {
     payload: {}
-    state?: { 'Alexa.PlaybackStateReporter'?: SubType<EndpointState, 'Alexa.PlaybackStateReporter'> }
+    state?: { [PlaybackStateReporter.namespace]?: SubType<EndpointState, PlaybackStateReporter.NamespaceType> }
 }
 export default class FrontendVideoPlayer
     implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter {
@@ -86,7 +86,7 @@ export default class FrontendVideoPlayer
         }
     }
     private getPlaybackStateMonitor() {
-        return this.fe.monitorStateChange('Alexa.PlaybackStateReporter', {
+        return this.fe.monitorStateChange(PlaybackStateReporter.namespace, {
             name: 'playbackState',
             value: 'PLAYING'
         })

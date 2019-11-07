@@ -7,7 +7,7 @@ type DirectiveType = PlaybackController.NamespaceType;
 const DirectiveName: DirectiveType = PlaybackController.namespace;
 type Response = {
     payload: {}
-    state?: { 'Alexa.PlaybackStateReporter'?: SubType<EndpointState, 'Alexa.PlaybackStateReporter'> }
+    state?: { [PlaybackStateReporter.namespace]?: SubType<EndpointState, PlaybackStateReporter.NamespaceType> }
 }
 export default class FrontendPlayback
     implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter {
@@ -22,7 +22,7 @@ export default class FrontendPlayback
     }
 
     async sendAction(action: string, expectedPlayback: PlaybackStateReporter.States): Promise<Response> {
-        const stateMonitor = this.fe.monitorStateChange('Alexa.PlaybackStateReporter', {
+        const stateMonitor = this.fe.monitorStateChange(PlaybackStateReporter.namespace, {
             name: 'playbackState',
             value: expectedPlayback
         })
