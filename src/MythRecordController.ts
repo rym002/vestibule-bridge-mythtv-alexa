@@ -114,7 +114,6 @@ export default class FrontendRecord
     }
     async lookupRecordState(request: DvrService.Request.GetRecorded): Promise<RecordController.States> {
         const recorded = await masterBackend.dvrService.GetRecorded(request)
-        console.log('Request: %j ::: Response: %j', request, recorded)
         return recorded.Recording.RecGroup == 'LiveTV'
             ? 'NOT_RECORDING'
             : 'RECORDING'
