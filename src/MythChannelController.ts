@@ -109,19 +109,28 @@ export default class FrontendChannel
     }
 
     async sendChannelChange(chanNum: string): Promise<Response> {
-        const playingMonitor = this.fe.monitorStateChange(PlaybackStateReporter.namespace, {
-            name: 'playbackState',
-            value: 'PLAYING'
-        })
+        let playbackState = {}
         if (!this.fe.isWatchingTv()) {
-            const startedTv = this.fe.monitorMythEvent('PLAY_CHANGED', 1000)
+            const channelPromise = this.fe.monitorStateChange(ChannelController.namespace)
+            const playingMonitor = this.fe.monitorStateChange(PlaybackStateReporter.namespace, {
+                name: 'playbackState',
+                value: 'PLAYING'
+            })
             await this.fe.SendAction({
                 Action: 'Live TV'
             });
-            await startedTv
+            const channelState = await channelPromise
+            playbackState = await playingMonitor || {}
+            if (channelState[ChannelController.namespace]
+                && channelState[ChannelController.namespace].channel
+                && channelState[ChannelController.namespace].channel.number == chanNum) {
+                return {
+                    payload: {},
+                    state: { ...playbackState, ...channelState }
+                }
+            }
         }
         const channelMonitor = await this.changeChannel(chanNum)
-        const playbackState = await playingMonitor || {}
         return {
             payload: {},
             state: { ...playbackState, ...channelMonitor }
