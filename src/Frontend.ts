@@ -22,7 +22,7 @@ import { EventMapping } from "mythtv-event-emitter/dist/messages";
 const ALEXA_ENABLED = 'AlexaEnabled';
 const TRUE = "true";
 export const MANUFACTURER_NAME = 'MythTV'
-const STATE_EVENT_TIMEOUT = Number(process.env['MYTHTV_STATE_EVENT_TIMEOUT'] || 3000)
+export const STATE_EVENT_TIMEOUT = Number(process.env['MYTHTV_STATE_EVENT_TIMEOUT'] || 3000)
 export interface MythAlexaEventFrontend extends MythEventFrontend {
     readonly alexaEmitter: AlexaEndpointEmitter
     monitorStateChange<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(namespace: NS, expected?: {
@@ -82,7 +82,7 @@ export class AlexaEventFrontend {
     }
     async monitorMythEvent<T extends keyof EventMapping, P extends EventMapping[T]>(eventName: T, timeout: number): Promise<P> {
         try {
-            return this.fe.monitorMythEvent(eventName, timeout)
+            return await this.fe.monitorMythEvent(eventName, timeout)
         } catch (err) {
             const error: ErrorHolder = {
                 errorType: 'Alexa',
