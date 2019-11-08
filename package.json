@@ -18,7 +18,7 @@
     "type": "git"
   },
   "dependencies": {
-    "@vestibule-link/alexa-video-skill-types": "^1.1.1",
+    "@vestibule-link/alexa-video-skill-types": "^1.1.9",
     "fuse.js": "^3.4.5",
     "lodash": "^4.17.15",
     "node-arp": "^1.0.6"
@@ -30,7 +30,7 @@
   "devDependencies": {
     "@types/chai": "^4.2.4",
     "@types/express": "^4.17.2",
-    "@types/lodash": "^4.14.145",
+    "@types/lodash": "^4.14.146",
     "@types/mocha": "^5.2.7",
     "@types/nock": "^10.0.3",
     "@types/node": "^12.12.6",
@@ -40,7 +40,7 @@
     "@vestibule-link/bridge-assistant-alexa": "^1.0.15",
     "@vestibule-link/bridge-http": "^1.0.2",
     "@vestibule-link/bridge-mythtv": "^1.4.0",
-    "@vestibule-link/iot-types": "^2.0.2",
+    "@vestibule-link/iot-types": "^2.0.3",
     "chai": "^4.2.0",
     "mocha": "^6.2.2",
     "mythtv-event-emitter": "^30.0.1",

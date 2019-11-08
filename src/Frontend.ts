@@ -15,6 +15,7 @@ import FrontendVideoPlayer from "./MythRemoteVideoPlayer";
 import FrontendSeek from "./MythSeekController";
 import MythTvRecorder from "./MythVideoRecorder";
 import FrontendWol from "./MythWol";
+import FrontendKeypad from "./MythKeypadController";
 import { MythSenderEventEmitter } from "mythtv-event-emitter";
 import { EventMapping } from "mythtv-event-emitter/dist/messages";
 
@@ -178,5 +179,9 @@ const directiveBuilders: DirectiveBuilder[] = [{
 }, {
     createHandler(fe: MythAlexaEventFrontend): void {
         new FrontendInfo(fe);
+    }
+}, {
+    createHandler(fe: MythAlexaEventFrontend): void {
+        new FrontendKeypad(fe);
     }
 }]
