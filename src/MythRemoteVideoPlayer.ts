@@ -3,7 +3,7 @@ import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from "@vest
 import { EndpointState, SubType } from "@vestibule-link/iot-types";
 import { sortBy } from 'lodash';
 import { ApiTypes, masterBackend } from "mythtv-services-api";
-import { MythAlexaEventFrontend } from "./Frontend";
+import { MythAlexaEventFrontend, STATE_EVENT_TIMEOUT } from "./Frontend";
 
 
 type DirectiveType = RemoteVideoPlayer.NamespaceType;
@@ -93,7 +93,7 @@ export default class FrontendVideoPlayer
     }
     private async playVideo(videoId: number) {
         if (this.fe.isWatching()) {
-            const stoppedTv = this.fe.monitorMythEvent('PLAY_STOPPED', 1000);
+            const stoppedTv = this.fe.monitorMythEvent('PLAY_STOPPED', STATE_EVENT_TIMEOUT);
             await this.fe.SendAction({
                 Action: 'STOPPLAYBACK'
             })
