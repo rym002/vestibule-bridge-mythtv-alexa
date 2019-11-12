@@ -48,7 +48,7 @@ export class AlexaEventFrontend {
         name: N, value: SubType<SubType<EndpointState, NS>, N>
     }): Promise<EndpointState | undefined> {
         return new Promise((resolve, reject) => {
-            if (expected) {
+            if (expected !== undefined) {
                 const currentState = this.alexaEmitter.endpoint;
                 if (currentState[namespace]) {
                     const namespaceValue = currentState[namespace];
