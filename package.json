@@ -18,14 +18,14 @@
     "type": "git"
   },
   "dependencies": {
-    "@vestibule-link/alexa-video-skill-types": "^1.1.9",
+    "@vestibule-link/alexa-video-skill-types": "^1.1.12",
     "fuse.js": "^3.4.5",
     "lodash": "^4.17.15",
     "node-arp": "^1.0.6"
   },
   "peerDependencies": {
     "@vestibule-link/bridge-mythtv": "^1.4.0",
-    "@vestibule-link/bridge-assistant-alexa": "^1.0.15"
+    "@vestibule-link/bridge-assistant-alexa": "^1.0.17"
   },
   "devDependencies": {
     "@types/chai": "^4.2.4",
@@ -33,11 +33,11 @@
     "@types/lodash": "^4.14.146",
     "@types/mocha": "^5.2.7",
     "@types/nock": "^10.0.3",
-    "@types/node": "^12.12.6",
+    "@types/node": "^12.12.7",
     "@types/sinon": "^7.5.0",
     "@vestibule-link/bridge": "^1.1.2",
     "@vestibule-link/bridge-assistant": "^1.0.10",
-    "@vestibule-link/bridge-assistant-alexa": "^1.0.15",
+    "@vestibule-link/bridge-assistant-alexa": "^1.0.17",
     "@vestibule-link/bridge-http": "^1.0.2",
     "@vestibule-link/bridge-mythtv": "^1.4.0",
     "@vestibule-link/iot-types": "^2.0.3",
@@ -47,7 +47,7 @@
     "mythtv-services-api": "^30.1.0",
     "nock": "^10.0.6",
     "sinon": "^7.5.0",
-    "ts-node": "^8.4.1",
+    "ts-node": "^8.5.0",
     "typescript": "^3.7.2"
   }
 }
