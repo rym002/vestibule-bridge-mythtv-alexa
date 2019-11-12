@@ -167,11 +167,7 @@ export default class FrontendChannel
                 affiliateCallSign: channelInfo.CallSign
             }
         } else {
-            return {
-                affiliateCallSign: null,
-                callSign: null,
-                number: null
-            }
+            return null
         }
     }
 
