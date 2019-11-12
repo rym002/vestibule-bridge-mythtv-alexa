@@ -1,6 +1,5 @@
 import { PlaybackController } from '@vestibule-link/alexa-video-skill-types';
 import 'mocha';
-import { MythAlexaEventFrontend } from '../src/Frontend';
 import Handler from '../src/MythPlaybackController';
 import { createContextSandbox, createMockFrontend, getContextSandbox, getFrontend, restoreSandbox, verifyActionDirective, verifyRefreshCapability } from './MockHelper';
 
@@ -8,7 +7,7 @@ import { createContextSandbox, createMockFrontend, getContextSandbox, getFronten
 describe('MythPlaybackController', function () {
     beforeEach(async function () {
         createContextSandbox(this)
-        const frontend = await createMockFrontend('playback',this);
+        const frontend = await createMockFrontend('playback', this);
         new Handler(frontend)
     })
     afterEach(function () {
@@ -20,6 +19,9 @@ describe('MythPlaybackController', function () {
                 const fe = getFrontend(this)
                 fe.alexaEmitter.endpoint["Alexa.PlaybackStateReporter"] = {
                     playbackState: 'PLAYING'
+                }
+                fe.alexaEmitter.endpoint["Alexa.ChannelController"] = {
+                    channel: {}
                 }
             })
             it('FastForward should send SEEKFFWD action', async function () {
@@ -91,7 +93,11 @@ describe('MythPlaybackController', function () {
                 })
             })
             it('Stop should send STOPPLAYBACK action', async function () {
-                await verifyActionDirective(getFrontend(this), PlaybackController.namespace, 'Stop', {}, [{
+                const frontend = getFrontend(this);
+                frontend.mythEventEmitter.emit('LIVETV_STARTED', {
+                    SENDER: ''
+                })
+                await verifyActionDirective(frontend, PlaybackController.namespace, 'Stop', {}, [{
                     actionName: 'STOPPLAYBACK',
                     response: true
                 }], {
@@ -100,11 +106,17 @@ describe('MythPlaybackController', function () {
                     stateChange: {
                         'Alexa.PlaybackStateReporter': {
                             playbackState: 'STOPPED'
+                        },
+                        'Alexa.ChannelController': {
+                            channel: null
                         }
                     }
                 }, {
                     'Alexa.PlaybackStateReporter': {
                         playbackState: 'STOPPED'
+                    },
+                    'Alexa.ChannelController': {
+                        channel: null
                     }
                 })
             })

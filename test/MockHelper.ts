@@ -155,7 +155,7 @@ export async function verifyActionDirective<NS extends Directive.Namespaces, N e
     if (stateChange) {
         const stateEmitter = <EventEmitter>frontend.alexaEmitter.alexaStateEmitter
         keys(stateChange).forEach((key) => {
-            stateEmitter.once('newListener', (event, listener) => {
+            stateEmitter.on('newListener', (event, listener) => {
                 if (event == key) {
                     process.nextTick(() => {
                         keys(stateChange[key]).forEach((stateKey) => {
