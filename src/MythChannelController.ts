@@ -31,6 +31,9 @@ export default class FrontendChannel
         fe.mythEventEmitter.on('LIVETV_ENDED', message => {
             this.updateStoppedState(this.fe.eventDeltaId())
         });
+        fe.masterBackendEmitter.on('PLAY_STOPPED',message=>{
+            this.updateStoppedState(this.fe.eventDeltaId())
+        })
     }
 
     refreshState(deltaId: symbol): void {
