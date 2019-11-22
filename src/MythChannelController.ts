@@ -17,6 +17,11 @@ type Response = {
 export default class FrontendChannel
     implements SubType<DirectiveHandlers, DirectiveType>, StateEmitter, CapabilityEmitter {
     readonly supported: SupportedDirectives<DirectiveType> = ['ChangeChannel', 'SkipChannels'];
+    readonly emptyChannel: ChannelController.Channel = {
+        affiliateCallSign: null,
+        callSign: null,
+        number: null
+    }
     constructor(readonly fe: MythAlexaEventFrontend) {
         fe.alexaEmitter.on('refreshState', this.refreshState.bind(this));
         fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
@@ -170,7 +175,7 @@ export default class FrontendChannel
                 affiliateCallSign: channelInfo.affiliateName
             }
         } else {
-            return null
+            return this.emptyChannel
         }
     }
 
@@ -188,6 +193,6 @@ export default class FrontendChannel
         this.fe.alexaEmitter.emit('state', DirectiveName, 'channel', state, deltaId);
     }
     private updateStoppedState(deltaId: symbol) {
-        this.fe.alexaEmitter.emit('state', DirectiveName, 'channel', null, deltaId);
+        this.fe.alexaEmitter.emit('state', DirectiveName, 'channel', this.emptyChannel, deltaId);
     }
 }

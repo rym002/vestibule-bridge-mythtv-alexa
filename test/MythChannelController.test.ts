@@ -245,7 +245,11 @@ describe('MythChannelController', function () {
             it('LIVETV_ENDED event should change state to null', async function () {
                 await verifyMythEventState(getFrontend(this), 'LIVETV_ENDED', {
                     SENDER: ''
-                }, ChannelController.namespace, 'channel', null)
+                }, ChannelController.namespace, 'channel', {
+                    affiliateCallSign: null,
+                    callSign: null,
+                    number: null
+                })
             })
         })
     })
