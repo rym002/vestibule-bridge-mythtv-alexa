@@ -172,7 +172,7 @@ export default class FrontendChannel
             return {
                 number: channelInfo.ChanNum,
                 callSign: channelInfo.CallSign,
-                affiliateCallSign: channelInfo.affiliateName
+                affiliateCallSign: channelInfo.affiliateName != undefined ? channelInfo.affiliateName : null
             }
         } else {
             return this.emptyChannel
