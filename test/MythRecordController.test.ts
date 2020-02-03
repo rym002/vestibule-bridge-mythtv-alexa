@@ -1,7 +1,7 @@
 import { RecordController } from '@vestibule-link/alexa-video-skill-types';
 import 'mocha';
 import Handler from '../src/MythRecordController';
-import { createContextSandbox, createFrontendNock, createMockFrontend, getContextSandbox, getFrontend, restoreSandbox, verifyActionDirective, verifyMythEventState, verifyRefreshCapability, verifyRefreshState, createBackendNock } from './MockHelper';
+import { createContextSandbox, createFrontendNock, createMockFrontend, getContextSandbox, getFrontend, restoreSandbox, verifyActionDirective, verifyMythEventState, verifyRefreshCapability, verifyRefreshState, createBackendNock, convertDateParams } from './MockHelper';
 
 
 describe('MythRecordController', function () {
@@ -60,17 +60,22 @@ describe('MythRecordController', function () {
         })
         it('PLAY_CHANGED should provide ChanIdRequest', async function () {
             const frontend = getFrontend(this);
+            const startTime = new Date('2020-01-10T01:00:10Z')
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
                 CHANID: '201',
-                RECORDEDID: '100'
+                STARTTIME: startTime
             })
+            const request = {
+                ChanId: 201,
+                StartTime: startTime
+            }
             createBackendNock('Dvr')
                 .get('/GetRecorded')
                 .query({
-                    RecordedId: 100
-                })
-                .reply(200, {
+                    ...request,
+                    ...convertDateParams(request, ['StartTime'])
+                }).reply(200, {
                     Program: {
                         Recording: {
                             RecGroup: 'Default'
@@ -83,21 +88,27 @@ describe('MythRecordController', function () {
         })
         it('REC_STARTED should update ChanIdRequest StartTime if watching CHANID', async function () {
             const frontend = getFrontend(this);
+            const startTime = new Date('2020-01-10T02:00:10Z')
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
                 CHANID: '202',
-                RECORDEDID: '101'
+                STARTTIME: startTime
             })
+            const startTime2 = new Date('2020-01-10T02:10:10Z')
             frontend.masterBackendEmitter.emit('REC_STARTED', {
                 SENDER: '',
                 CHANID: '202',
-                RECGROUP: 'LiveTV',
-                RECORDEDID: '102'
+                STARTTIME: startTime2
             })
+            const request = {
+                ChanId: 202,
+                StartTime: startTime2
+            }
             createBackendNock('Dvr')
                 .get('/GetRecorded')
                 .query({
-                    RecordedId: 102
+                    ...request,
+                    ...convertDateParams(request, ['StartTime'])
                 })
                 .reply(200, {
                     Program: {
@@ -112,21 +123,26 @@ describe('MythRecordController', function () {
         })
         it('REC_STARTED should not update ChanIdRequest StartTime if different CHANID', async function () {
             const frontend = getFrontend(this);
+            const startTime = new Date('2020-01-10T03:00:10Z')
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
                 CHANID: '202',
-                RECORDEDID: '103'
+                STARTTIME: startTime
             })
             frontend.masterBackendEmitter.emit('REC_STARTED', {
                 SENDER: '',
                 CHANID: '200',
-                RECGROUP: 'LiveTV',
-                RECORDEDID: '201'
+                STARTTIME: startTime
             })
+            const request = {
+                ChanId: 202,
+                StartTime: startTime
+            }
             createBackendNock('Dvr')
                 .get('/GetRecorded')
                 .query({
-                    RecordedId: 103
+                    ...request,
+                    ...convertDateParams(request, ['StartTime'])
                 })
                 .reply(200, {
                     Program: {
@@ -141,25 +157,25 @@ describe('MythRecordController', function () {
         })
         it('PLAY_CHANGED should emit NOT_RECORDING', async function () {
             const frontend = getFrontend(this);
+            const startTime = new Date('2020-01-10T04:00:10Z')
             await verifyMythEventState(frontend, 'PLAY_CHANGED', {
                 SENDER: '',
                 CHANID: '202',
-                RECGROUP: 'LiveTV',
-                RECORDEDID: '201'
+                STARTTIME: startTime
             }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING', false)
         })
         it('REC_STARTED should emit NOT_RECORDING', async function () {
             const frontend = getFrontend(this);
+            const startTime = new Date('2020-01-10T05:00:10Z')
             frontend.mythEventEmitter.emit('PLAY_CHANGED', {
                 SENDER: '',
                 CHANID: '202',
-                RECORDEDID: '201'
+                STARTTIME: startTime
             })
             await verifyMythEventState(frontend, 'REC_STARTED', {
                 SENDER: '',
                 CHANID: '202',
-                RECGROUP: 'LiveTV',
-                RECORDEDID: '201'
+                STARTTIME: startTime
             }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING', true)
         })
         it('LIVETV_ENDED should emit NOT_RECORDING', async function () {
@@ -200,17 +216,10 @@ describe('MythRecordController', function () {
                     })
                     it('should emit RECORDING when RecGroup!=LiveTV', async function () {
                         createBackendNock('Dvr')
-                            .get('/RecordedIdForKey')
+                            .get('/GetRecorded')
                             .query({
                                 ChanId: '200' + getFrontend(this).hostname(),
                                 StartTime: '2019-11-05T00:00:00'
-                            })
-                            .reply(200, {
-                                int: 300
-                            })
-                            .get('/GetRecorded')
-                            .query({
-                                RecordedId: '300'
                             })
                             .reply(200, {
                                 Program: {
@@ -223,17 +232,10 @@ describe('MythRecordController', function () {
                     })
                     it('should emit NOT_RECORDING when RecGroup==LiveTV', async function () {
                         createBackendNock('Dvr')
-                            .get('/RecordedIdForKey')
+                            .get('/GetRecorded')
                             .query({
                                 ChanId: '200' + getFrontend(this).hostname(),
                                 StartTime: '2019-11-05T00:00:00'
-                            })
-                            .reply(200, {
-                                int: 301
-                            })
-                            .get('/GetRecorded')
-                            .query({
-                                RecordedId: '301'
                             })
                             .reply(200, {
                                 Program: {

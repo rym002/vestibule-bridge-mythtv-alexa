@@ -15,7 +15,7 @@ export default class FrontendRecord
     implements SubType<DirectiveHandlers, DirectiveType>, StateEmitter, CapabilityEmitter {
     private currentState?: {
         channel: number
-        recordedId: number
+        startTime: Date
     }
     readonly supported: SupportedDirectives<DirectiveType> = ['StartRecording', 'StopRecording'];
     constructor(readonly fe: MythAlexaEventFrontend) {
@@ -24,11 +24,11 @@ export default class FrontendRecord
         fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
         fe.alexaEmitter.registerDirectiveHandler(DirectiveName, this);
         fe.mythEventEmitter.on('PLAY_CHANGED', message => {
-            if (this.fe.isWatchingTv() && message.CHANID && message.RECORDEDID) {
+            if (this.fe.isWatchingTv() && message.CHANID && message.STARTTIME) {
                 this.updateState('NOT_RECORDING', this.fe.eventDeltaId())
                 this.currentState = {
                     channel: Number(message.CHANID),
-                    recordedId: Number(message.RECORDEDID)
+                    startTime: message.STARTTIME
                 }
             } else {
                 this.currentState = undefined
@@ -36,12 +36,11 @@ export default class FrontendRecord
         })
         fe.masterBackendEmitter.on('REC_STARTED', message => {
             if (this.fe.isWatchingTv()
-                && message.RECGROUP == 'LiveTV'
                 && message.CHANID
-                && message.RECORDEDID
+                && message.STARTTIME
                 && this.currentState
                 && Number(message.CHANID) == this.currentState.channel) {
-                this.currentState.recordedId = Number(message.RECORDEDID)
+                this.currentState.startTime = message.STARTTIME
                 this.updateState('NOT_RECORDING', this.fe.eventDeltaId())
             }
         })
@@ -65,16 +64,13 @@ export default class FrontendRecord
         if (this.fe.isWatchingTv()) {
             const status = await this.fe.GetStatus();
             const state = status.State;
-            const recordedId = await masterBackend.dvrService.RecordedIdForKey({
-                ChanId: state.chanid,
-                StartTime: state['starttime']
-            })
             this.currentState = {
                 channel: state.chanid,
-                recordedId: recordedId
+                startTime: state['starttime']
             }
             const recordingState = await this.lookupRecordState({
-                RecordedId: recordedId
+                ChanId: this.currentState.channel,
+                StartTime: this.currentState.startTime
             });
             this.updateState(recordingState, deltaId);
         } else {
@@ -83,7 +79,8 @@ export default class FrontendRecord
     }
     private async updateRecordingStateFromCurrentProgram(deltaId: symbol): Promise<void> {
         const recordingState = await this.lookupRecordState({
-            RecordedId: this.currentState.recordedId
+            ChanId: this.currentState.channel,
+            StartTime: this.currentState.startTime
         })
         this.updateState(recordingState, deltaId);
     }

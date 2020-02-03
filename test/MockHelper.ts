@@ -14,6 +14,8 @@ import { frontend } from "mythtv-services-api";
 import { assert, match, SinonSandbox, createSandbox } from "sinon";
 import { AlexaEventFrontend, MANUFACTURER_NAME, MythAlexaEventFrontend } from "../src/Frontend";
 import nock = require("nock");
+import * as moment from 'moment';
+
 export interface MockMythAlexaEventFrontend extends MythAlexaEventFrontend {
     resetDeltaId(): void
 }
@@ -207,4 +209,16 @@ export function restoreSandbox(context: Mocha.Context) {
 
 export function getContextSandbox(context: Mocha.Context): SinonSandbox {
     return context.test['sandbox']
+}
+
+type PickType<O,T> = {
+    [K in keyof O]:O[K] extends T?K:never
+}[keyof O]
+
+export function convertDateParams<T>(obj:T,fields:PickType<T,Date>[]){
+    const ret:any = {};
+    fields.forEach(field=>{
+        ret[field] = moment.utc(obj[field]).format('YYYY-MM-DDTHH:mm:ss')
+    })
+    return ret;
 }
