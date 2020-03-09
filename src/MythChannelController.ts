@@ -121,7 +121,9 @@ export default class FrontendChannel
             const channelPromise = this.fe.monitorStateChange(ChannelController.namespace)
             const playingMonitor = this.fe.monitorStateChange(PlaybackStateReporter.namespace, {
                 name: 'playbackState',
-                value: 'PLAYING'
+                value: {
+                    state: 'PLAYING'
+                }
             })
             await this.fe.SendAction({
                 Action: 'Live TV'

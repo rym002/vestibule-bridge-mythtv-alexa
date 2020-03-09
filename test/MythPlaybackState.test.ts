@@ -6,7 +6,7 @@ import { createContextSandbox, createFrontendNock, createMockFrontend, getContex
 describe('MythPlaybackState', function () {
     beforeEach(async function () {
         createContextSandbox(this)
-        const frontend = await createMockFrontend('playbackstate',this);
+        const frontend = await createMockFrontend('playbackstate', this);
         frontend.mythEventEmitter.emit('PLAY_STARTED', {
             SENDER: ''
         })
@@ -19,27 +19,27 @@ describe('MythPlaybackState', function () {
         it('PLAY_CHANGED event should change state to PLAYING', async function () {
             await verifyMythEventState(getFrontend(this), 'PLAY_CHANGED', {
                 SENDER: ''
-            }, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
+            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'PLAYING' })
         })
         it('PLAY_STARTED event should change state to PLAYING', async function () {
             await verifyMythEventState(getFrontend(this), 'PLAY_STARTED', {
                 SENDER: ''
-            }, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
+            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'PLAYING' })
         })
         it('PLAY_UNPAUSED event should change state to PLAYING', async function () {
             await verifyMythEventState(getFrontend(this), 'PLAY_UNPAUSED', {
                 SENDER: ''
-            }, PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
+            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'PLAYING' })
         })
         it('PLAY_PAUSED event should change state to PAUSED', async function () {
             await verifyMythEventState(getFrontend(this), 'PLAY_PAUSED', {
                 SENDER: ''
-            }, PlaybackStateReporter.namespace, 'playbackState', 'PAUSED')
+            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'PAUSED' })
         })
         it('PLAY_STOPPED event should change state to STOPPED', async function () {
             await verifyMythEventState(getFrontend(this), 'PLAY_STOPPED', {
                 SENDER: ''
-            }, PlaybackStateReporter.namespace, 'playbackState', 'STOPPED')
+            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'STOPPED' })
         })
     })
     context('Alexa Shadow', function () {
@@ -65,7 +65,7 @@ describe('MythPlaybackState', function () {
                                 }
                             }
                         })
-                    await verifyRefreshState(getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', 'PAUSED')
+                    await verifyRefreshState(getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', { state: 'PAUSED' })
                 })
                 it('should emit PLAYING when watching and playspeed != 0', async function () {
                     const feNock = createFrontendNock(getFrontend(this).hostname())
@@ -81,7 +81,7 @@ describe('MythPlaybackState', function () {
                                 }
                             }
                         })
-                    await verifyRefreshState(getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', 'PLAYING')
+                    await verifyRefreshState(getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', { state: 'PLAYING' })
                 })
             })
             context('Not watching', function () {
@@ -92,7 +92,7 @@ describe('MythPlaybackState', function () {
                     })
                 })
                 it('should emit STOPPED when not watching', async function () {
-                    await verifyRefreshState(getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', 'STOPPED')
+                    await verifyRefreshState(getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', { state: 'STOPPED' })
                 })
             })
         })

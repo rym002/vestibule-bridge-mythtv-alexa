@@ -18,7 +18,9 @@ describe('MythPlaybackController', function () {
             beforeEach(function () {
                 const fe = getFrontend(this)
                 fe.alexaEmitter.endpoint["Alexa.PlaybackStateReporter"] = {
-                    playbackState: 'PLAYING'
+                    playbackState: {
+                        state: 'PLAYING'
+                    }
                 }
                 fe.alexaEmitter.endpoint["Alexa.ChannelController"] = {
                     channel: {}
@@ -63,12 +65,16 @@ describe('MythPlaybackController', function () {
                     payload: {},
                     stateChange: {
                         'Alexa.PlaybackStateReporter': {
-                            'playbackState': 'PAUSED'
+                            'playbackState': {
+                                state: 'PAUSED'
+                            }
                         }
                     }
                 }, {
                     'Alexa.PlaybackStateReporter': {
-                        playbackState: 'PAUSED'
+                        playbackState: {
+                            state: 'PAUSED'
+                        }
                     }
                 })
             })
@@ -105,7 +111,9 @@ describe('MythPlaybackController', function () {
                     payload: {},
                     stateChange: {
                         'Alexa.PlaybackStateReporter': {
-                            playbackState: 'STOPPED'
+                            playbackState: {
+                                state: 'STOPPED'
+                            }
                         },
                         'Alexa.ChannelController': {
                             channel: null
@@ -113,7 +121,9 @@ describe('MythPlaybackController', function () {
                     }
                 }, {
                     'Alexa.PlaybackStateReporter': {
-                        playbackState: 'STOPPED'
+                        playbackState: {
+                            state: 'STOPPED'
+                        }
                     },
                     'Alexa.ChannelController': {
                         channel: null
@@ -125,7 +135,9 @@ describe('MythPlaybackController', function () {
             beforeEach(function () {
                 const fe = getFrontend(this)
                 fe.alexaEmitter.endpoint["Alexa.PlaybackStateReporter"] = {
-                    playbackState: 'PAUSED'
+                    playbackState: {
+                        state: 'PAUSED'
+                    }
                 }
             })
             it('Play should send PLAY action', async function () {
@@ -137,12 +149,16 @@ describe('MythPlaybackController', function () {
                     payload: {},
                     stateChange: {
                         'Alexa.PlaybackStateReporter': {
-                            playbackState: 'PLAYING'
+                            playbackState: {
+                                state: 'PLAYING'
+                            }
                         }
                     }
                 }, {
                     'Alexa.PlaybackStateReporter': {
-                        playbackState: 'PLAYING'
+                        playbackState: {
+                            state: 'PLAYING'
+                        }
                     }
                 })
             })

@@ -88,7 +88,9 @@ export default class FrontendVideoPlayer
     private getPlaybackStateMonitor() {
         return this.fe.monitorStateChange(PlaybackStateReporter.namespace, {
             name: 'playbackState',
-            value: 'PLAYING'
+            value: {
+                state: 'PLAYING'
+            }
         })
     }
     private async playVideo(videoId: number) {

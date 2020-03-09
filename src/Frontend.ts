@@ -18,7 +18,7 @@ import FrontendWol from "./MythWol";
 import FrontendKeypad from "./MythKeypadController";
 import { MythSenderEventEmitter } from "mythtv-event-emitter";
 import { EventMapping } from "mythtv-event-emitter/dist/messages";
-
+import { isEqual } from 'lodash'
 
 const ALEXA_ENABLED = 'AlexaEnabled';
 const TRUE = "true";
@@ -52,7 +52,7 @@ export class AlexaEventFrontend {
                 const currentState = this.alexaEmitter.endpoint;
                 if (currentState[namespace]) {
                     const namespaceValue = currentState[namespace];
-                    if (namespaceValue[expected.name] == expected.value) {
+                    if (isEqual(namespaceValue[expected.name], expected.value)) {
                         resolve()
                         return;
                     }

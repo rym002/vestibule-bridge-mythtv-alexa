@@ -27,7 +27,9 @@ export default class FrontendPlayback
     async sendAction(action: string, expectedPlayback: PlaybackStateReporter.States): Promise<Response> {
         const playbackMonitor = this.fe.monitorStateChange(PlaybackStateReporter.namespace, {
             name: 'playbackState',
-            value: expectedPlayback
+            value: {
+                state: expectedPlayback
+            }
         })
         let channelMonitor: Promise<{ [ChannelController.namespace]?: SubType<EndpointState, ChannelController.NamespaceType> }> | undefined
         if (expectedPlayback == 'STOPPED' && this.fe.isWatchingTv()) {

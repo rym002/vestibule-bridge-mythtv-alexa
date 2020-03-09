@@ -52,7 +52,9 @@ export default class FrontendPlaybackState
     }
 
     private updateState(state: PlaybackStateReporter.States, deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('state', DirectiveName, 'playbackState', state, deltaId);
+        this.fe.alexaEmitter.emit('state', DirectiveName, 'playbackState', {
+            state: state
+        }, deltaId);
     }
     private updatePlayingState(deltaId: symbol) {
         this.updateState('PLAYING', deltaId);

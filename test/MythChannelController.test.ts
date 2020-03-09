@@ -13,7 +13,9 @@ describe('MythChannelController', function () {
         const frontend = await createMockFrontend('channel', this);
         new Handler(frontend)
         frontend.alexaEmitter.endpoint['Alexa.PlaybackStateReporter'] = {
-            playbackState: 'PLAYING'
+            playbackState: {
+                state: 'PLAYING'
+            }
         }
         frontend.alexaEmitter.endpoint['Alexa.ChannelController'] = {
             channel: currentChannel
