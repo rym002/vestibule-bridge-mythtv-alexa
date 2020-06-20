@@ -1,6 +1,5 @@
 import { EndpointHealth } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, StateEmitter } from "@vestibule-link/bridge-assistant-alexa";
-import { EndpointState, SubType } from "@vestibule-link/iot-types";
 import { MythAlexaEventFrontend } from "./Frontend";
 
 type DirectiveType = EndpointHealth.NamespaceType;
@@ -30,14 +29,11 @@ export default class FrontendHealth
     private endpointState(): EndpointHealth.States {
         return this.fe.isConnected() ? 'OK' : 'UNREACHABLE'
     }
-    async state(): Promise<SubType<EndpointState, DirectiveType>> {
-        return {
-            connectivity: await this.endpointState()
-        }
-    }
 
     private updateState(state: EndpointHealth.States, deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('state', DirectiveName, 'connectivity', state, deltaId);
+        this.fe.alexaEmitter.emit('state', DirectiveName, 'connectivity', {
+            value: state
+        }, deltaId);
     }
     private updateConnectedState(deltaId: symbol) {
         this.updateState('OK', deltaId);
