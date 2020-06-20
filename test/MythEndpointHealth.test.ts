@@ -21,12 +21,12 @@ describe('MythEndpointHealth', function () {
         it('CLIENT_CONNECTED event should change state to OK', async function () {
             await verifyMythEventState(getFrontend(this), 'CLIENT_CONNECTED', {
                 SENDER: ''
-            }, EndpointHealth.namespace, 'connectivity', 'OK')
+            }, EndpointHealth.namespace, 'connectivity', { value: 'OK' })
         })
         it('CLIENT_DISCONNECTED event should change state to UNREACHABLE', async function () {
             await verifyMythEventState(getFrontend(this), 'CLIENT_DISCONNECTED', {
                 SENDER: ''
-            }, EndpointHealth.namespace, 'connectivity', 'UNREACHABLE')
+            }, EndpointHealth.namespace, 'connectivity', { value: 'UNREACHABLE' })
         })
     })
     context('Alexa Shadow', function () {
@@ -35,13 +35,13 @@ describe('MythEndpointHealth', function () {
                 getFrontend(this).mythEventEmitter.emit('CLIENT_CONNECTED', {
                     SENDER: ''
                 })
-                await verifyRefreshState(getFrontend(this), EndpointHealth.namespace, 'connectivity', 'OK')
+                await verifyRefreshState(getFrontend(this), EndpointHealth.namespace, 'connectivity', { value: 'OK' })
             })
             it('should emit UNREACHABLE when failed response', async function () {
                 getFrontend(this).mythEventEmitter.emit('CLIENT_DISCONNECTED', {
                     SENDER: ''
                 })
-                await verifyRefreshState(getFrontend(this), EndpointHealth.namespace, 'connectivity', 'UNREACHABLE')
+                await verifyRefreshState(getFrontend(this), EndpointHealth.namespace, 'connectivity', { value: 'UNREACHABLE' })
             })
         })
         it('refreshCapability should emit powerState', async function () {
