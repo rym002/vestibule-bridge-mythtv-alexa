@@ -1,7 +1,7 @@
-import { EndpointInfo, generateEndpointId } from '@vestibule-link/iot-types';
+import { EndpointInfo } from '@vestibule-link/iot-types';
 import { expect } from 'chai';
 import 'mocha';
-import { getLocalEndpoint, MANUFACTURER_NAME } from '../src/Frontend';
+import { getEndpointName, MANUFACTURER_NAME } from '../src/Frontend';
 import Handler from '../src/MythEndpointInfo';
 import { createBackendNock, createContextSandbox, createMockFrontend, getFrontend, restoreSandbox } from './MockHelper';
 
@@ -9,7 +9,7 @@ import { createBackendNock, createContextSandbox, createMockFrontend, getFronten
 describe('MythEndpointInfo', function () {
     beforeEach(async function () {
         createContextSandbox(this)
-        const frontend = await createMockFrontend('endpointinfo',this);
+        const frontend = await createMockFrontend('endpointinfo', this);
         new Handler(frontend)
     })
     afterEach(function () {
@@ -34,7 +34,7 @@ describe('MythEndpointInfo', function () {
                 manufacturerName: MANUFACTURER_NAME,
                 friendlyName: alexaDeviceName,
                 description: MANUFACTURER_NAME + ' Frontend ' + frontend.hostname(),
-                endpointId: generateEndpointId(getLocalEndpoint(frontend))
+                endpointId: getEndpointName(frontend)
             }
             const emitterPromise = new Promise((resolve, reject) => {
                 frontend.alexaEmitter.once('info', (endpointInfo, deltaId) => {

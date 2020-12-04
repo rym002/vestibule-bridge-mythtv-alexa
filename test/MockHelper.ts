@@ -1,21 +1,34 @@
 import { Directive } from "@vestibule-link/alexa-video-skill-types";
-import { providersEmitter, responseRouter } from "@vestibule-link/bridge-assistant";
+import { providersEmitter } from "@vestibule-link/bridge-assistant";
 import { AlexaEndpointEmitter } from "@vestibule-link/bridge-assistant-alexa";
+import * as iot from "@vestibule-link/bridge-assistant-alexa/dist/iot";
 import { registerAssistant } from "@vestibule-link/bridge-assistant-alexa/dist/endpoint";
 import { mergeObject } from "@vestibule-link/bridge-mythtv";
 import { CachingEventFrontend } from "@vestibule-link/bridge-mythtv/dist/frontends";
-import { DirectiveResponse, EndpointCapability, EndpointState, ResponseMessage, SubType } from "@vestibule-link/iot-types";
+import { DirectiveResponse, EndpointCapability, EndpointState, RequestMessage, ResponseMessage, SubType } from "@vestibule-link/iot-types";
 import { expect } from 'chai';
 import { EventEmitter } from "events";
 import { memoize, MemoizedFunction, keys } from "lodash";
 import { MythSenderEventEmitter } from "mythtv-event-emitter";
 import { EventMapping } from "mythtv-event-emitter/dist/messages";
-import { frontend } from "mythtv-services-api";
-import { assert, match, SinonSandbox, createSandbox } from "sinon";
-import { AlexaEventFrontend, MANUFACTURER_NAME, MythAlexaEventFrontend } from "../src/Frontend";
+import { Frontend, frontend } from "mythtv-services-api";
+import { mqtt } from 'aws-iot-device-sdk-v2';
+import { assert, match, SinonSandbox, createSandbox, SinonStub, StubbableType, SinonStubbedInstance, SinonStubbedMember, createStubInstance, stub } from "sinon";
+import { AlexaEventFrontend, MythAlexaEventFrontend, getEndpointName } from "../src/Frontend";
 import nock = require("nock");
 import * as moment from 'moment';
 
+const clientId = 'testClientId'
+
+type StubbedClass<T> = SinonStubbedInstance<T> & T;
+
+function createSinonStubInstance<T>(
+    constructor: StubbableType<T>,
+    overrides?: { [K in keyof T]?: SinonStubbedMember<T[K]> },
+): StubbedClass<T> {
+    const stub = createStubInstance<T>(constructor, overrides);
+    return stub as unknown as StubbedClass<T>;
+}
 export interface MockMythAlexaEventFrontend extends MythAlexaEventFrontend {
     resetDeltaId(): void
 }
@@ -50,6 +63,30 @@ export function createFrontendNock(hostname: string) {
 export function createBackendNock(service: string) {
     return nock("http://localhost:6544/" + service)
 }
+
+let createConnectionStub: SinonStub
+let connectionStub: StubbedClass<mqtt.MqttClientConnection>
+const encoder = new TextEncoder()
+const topicHandlerMap = {}
+async function emitTopic(listenTopic: string, topic: string, req: any) {
+    await topicHandlerMap[listenTopic](topic, encoder.encode(JSON.stringify(req)))
+}
+export async function initAssistant() {
+    process.env.CLIENT_ID = clientId
+    if (!connectionStub) {
+        connectionStub = createSinonStubInstance(mqtt.MqttClientConnection)
+        connectionStub.publish.returns(Promise.resolve({}))
+        connectionStub.subscribe.callsFake((topic, qos, on_message) => {
+            topicHandlerMap[topic] = on_message
+            return Promise.resolve({
+                topic: topic,
+                qos: qos
+            })
+        })
+        createConnectionStub = stub(iot, 'createConnection').returns(Promise.resolve(connectionStub))
+        await registerAssistant();
+    }
+}
 export async function createMockFrontend(hostname: string, context: Mocha.Context): Promise<MockMythAlexaEventFrontend> {
     hostname += Math.random()
     const mythNock = createBackendNock('Myth')
@@ -60,9 +97,9 @@ export async function createMockFrontend(hostname: string, context: Mocha.Contex
         }).reply(200, {
             String: '6547'
         });
-    registerAssistant();
+    await initAssistant();
     const fe = await frontend(hostname);
-    const alexaEmitter = <AlexaEndpointEmitter>providersEmitter.getEndpointEmitter('alexa', { provider: MANUFACTURER_NAME, host: fe.hostname() }, true)
+    const alexaEmitter = <AlexaEndpointEmitter>await providersEmitter.getEndpointEmitter('alexa', getEndpointName(fe), true)
     const mythFe = new CachingEventFrontend(fe, new EventEmitter(), new EventEmitter())
     const mergedMythFe = mergeObject(mythFe, fe);
     const alexaFe = new AlexaEventFrontend(alexaEmitter, mergedMythFe);
@@ -168,19 +205,16 @@ export async function verifyActionDirective<NS extends Directive.Namespaces, N e
             })
         })
     }
-    const responsePromise = new Promise((resolve, reject) => {
-        responseRouter.once(messageId, (response) => {
-            try {
-                expect(response).to.eql(expectedResponse)
-                expect(frontendNock.isDone()).to.be.true
-                resolve()
-            } catch (err) {
-                reject(err)
-            }
-        })
-    })
-    frontend.alexaEmitter.emit('directive', [namespace, <string>name], requestMessage, messageId)
-    await responsePromise;
+    const mqttRequest: RequestMessage<any> = {
+        payload: requestMessage,
+        replyTopic: {
+            sync: messageId.toString()
+        }
+    }
+    const topicBase = getDirectiveTopicBase(frontend)
+    await emitTopic(`${topicBase}#`, `${topicBase}${namespace}/${name}`, mqttRequest)
+    expect(connectionStub.publish.calledWith(mqttRequest.replyTopic.sync, expectedResponse), 'Unexpected response')
+    expect(frontendNock.isDone()).to.be.true
 }
 
 export interface ActionMessage {
@@ -211,14 +245,19 @@ export function getContextSandbox(context: Mocha.Context): SinonSandbox {
     return context.test['sandbox']
 }
 
-type PickType<O,T> = {
-    [K in keyof O]:O[K] extends T?K:never
+type PickType<O, T> = {
+    [K in keyof O]: O[K] extends T ? K : never
 }[keyof O]
 
-export function convertDateParams<T>(obj:T,fields:PickType<T,Date>[]){
-    const ret:any = {};
-    fields.forEach(field=>{
+export function convertDateParams<T>(obj: T, fields: PickType<T, Date>[]) {
+    const ret: any = {};
+    fields.forEach(field => {
         ret[field] = moment.utc(obj[field]).format('YYYY-MM-DDTHH:mm:ss')
     })
     return ret;
+}
+
+function getDirectiveTopicBase(fe: Frontend.Service) {
+    const endpointId = getEndpointName(fe)
+    return `vestibule-bridge/${clientId}/alexa/endpoint/${endpointId}/directive/`
 }

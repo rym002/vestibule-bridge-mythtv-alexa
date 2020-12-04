@@ -1,11 +1,15 @@
 import { providersEmitter } from "@vestibule-link/bridge-assistant";
 import { AlexaEndpointEmitter } from "@vestibule-link/bridge-assistant-alexa";
 import { frontends, mergeObject, MythEventFrontend } from "@vestibule-link/bridge-mythtv";
-import { LocalEndpoint, EndpointState, SubType, ErrorHolder } from "@vestibule-link/iot-types";
-import { masterBackend, Frontend } from "mythtv-services-api";
+import { EndpointState, ErrorHolder, SubType } from "@vestibule-link/iot-types";
+import { isEqual } from 'lodash';
+import { MythSenderEventEmitter } from "mythtv-event-emitter";
+import { EventMapping } from "mythtv-event-emitter/dist/messages";
+import { Frontend, masterBackend } from "mythtv-services-api";
 import FrontendChannel from "./MythChannelController";
 import FrontendHealth from "./MythEndpointHealth";
 import FrontendInfo from "./MythEndpointInfo";
+import FrontendKeypad from "./MythKeypadController";
 import FrontendLauncher from "./MythLauncher";
 import FrontendPlayback from "./MythPlaybackController";
 import FrontendPlaybackState from "./MythPlaybackState";
@@ -15,10 +19,6 @@ import FrontendVideoPlayer from "./MythRemoteVideoPlayer";
 import FrontendSeek from "./MythSeekController";
 import MythTvRecorder from "./MythVideoRecorder";
 import FrontendWol from "./MythWol";
-import FrontendKeypad from "./MythKeypadController";
-import { MythSenderEventEmitter } from "mythtv-event-emitter";
-import { EventMapping } from "mythtv-event-emitter/dist/messages";
-import { isEqual } from 'lodash'
 
 const ALEXA_ENABLED = 'AlexaEnabled';
 const TRUE = "true";
@@ -105,7 +105,7 @@ export async function registerFrontends(): Promise<void> {
             Default: TRUE
         });
         if (enabled == TRUE) {
-            const alexaEmitter = <AlexaEndpointEmitter>providersEmitter.getEndpointEmitter('alexa', { provider: MANUFACTURER_NAME, host: fe.hostname() }, true)
+            const alexaEmitter = <AlexaEndpointEmitter>await providersEmitter.getEndpointEmitter('alexa', getEndpointName(fe), true)
             const alexaFe = new AlexaEventFrontend(alexaEmitter, fe);
             const mergedFe: MythAlexaEventFrontend = mergeObject(alexaFe, fe);
             buildEndpoint(mergedFe);
@@ -122,11 +122,12 @@ function buildEndpoint(fe: MythAlexaEventFrontend): void {
     });
 }
 
-export function getLocalEndpoint(fe: Frontend.Service): LocalEndpoint {
-    return {
-        provider: MANUFACTURER_NAME,
-        host: fe.hostname()
-    };
+export function getEndpointName(fe: Frontend.Service): string {
+    return getEndpointNameFromHostname(fe.hostname())
+}
+
+export function getEndpointNameFromHostname(hostname: string) {
+    return `${MANUFACTURER_NAME}_${hostname}`
 }
 interface DirectiveBuilder {
     createHandler(fe: MythAlexaEventFrontend): void;
