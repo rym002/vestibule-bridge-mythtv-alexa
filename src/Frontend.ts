@@ -109,6 +109,7 @@ export async function registerFrontends(): Promise<void> {
             const alexaFe = new AlexaEventFrontend(alexaConnector, fe);
             const mergedFe: MythAlexaEventFrontend = mergeObject(alexaFe, fe);
             buildEndpoint(mergedFe);
+            await alexaConnector.refresh(Symbol())
         }
     })
     await Promise.all(fePromises)
