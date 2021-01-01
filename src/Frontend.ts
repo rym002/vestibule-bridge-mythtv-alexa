@@ -1,5 +1,5 @@
-import { providersEmitter } from "@vestibule-link/bridge-assistant";
-import { AlexaEndpointEmitter } from "@vestibule-link/bridge-assistant-alexa";
+import { serviceProviderManager } from "@vestibule-link/bridge-service-provider";
+import { AlexaEndpointConnector } from "@vestibule-link/bridge-assistant-alexa";
 import { frontends, mergeObject, MythEventFrontend } from "@vestibule-link/bridge-mythtv";
 import { EndpointState, ErrorHolder, SubType } from "@vestibule-link/iot-types";
 import { isEqual } from 'lodash';
@@ -25,7 +25,7 @@ const TRUE = "true";
 export const MANUFACTURER_NAME = 'MythTV'
 export const STATE_EVENT_TIMEOUT = Number(process.env['MYTHTV_STATE_EVENT_TIMEOUT'] || 3000)
 export interface MythAlexaEventFrontend extends MythEventFrontend {
-    readonly alexaEmitter: AlexaEndpointEmitter
+    readonly alexaConnector: AlexaEndpointConnector
     monitorStateChange<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(namespace: NS, expected?: {
         name: N, value: SubType<SubType<EndpointState, NS>, N>
     }): Promise<EndpointState>;
@@ -34,14 +34,14 @@ export interface MythAlexaEventFrontend extends MythEventFrontend {
 export class AlexaEventFrontend {
     readonly mythEventEmitter: MythSenderEventEmitter
     readonly masterBackendEmitter: MythSenderEventEmitter
-    constructor(readonly alexaEmitter: AlexaEndpointEmitter, private readonly fe: MythEventFrontend) {
+    constructor(readonly alexaConnector: AlexaEndpointConnector, private readonly fe: MythEventFrontend) {
         this.mythEventEmitter = fe.mythEventEmitter
         this.masterBackendEmitter = fe.masterBackendEmitter
         fe.mythEventEmitter.on('post', (eventType, message) => {
-            this.alexaEmitter.completeDeltaState(this.fe.eventDeltaId());
+            this.alexaConnector.completeDeltaState(this.fe.eventDeltaId());
         })
-        this.fe.addConnectionMonitor('alexa', alexaEmitter, () => {
-            this.alexaEmitter.emit('refreshState', this.fe.eventDeltaId())
+        this.fe.addConnectionMonitor('alexa', alexaConnector, () => {
+            this.alexaConnector.refreshState(this.fe.eventDeltaId())
         })
     }
     monitorStateChange<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(namespace: NS, expected?: {
@@ -49,16 +49,16 @@ export class AlexaEventFrontend {
     }): Promise<EndpointState | undefined> {
         return new Promise((resolve, reject) => {
             if (expected !== undefined) {
-                const currentState = this.alexaEmitter.endpoint;
+                const currentState = this.alexaConnector.reportedState;
                 if (currentState[namespace]) {
                     const namespaceValue = currentState[namespace];
                     if (isEqual(namespaceValue[expected.name], expected.value)) {
-                        resolve()
+                        resolve(undefined)
                         return;
                     }
                 }
             }
-            const alexaStateEmitter = this.alexaEmitter.alexaStateEmitter;
+            const alexaStateEmitter = this.alexaConnector.alexaStateEmitter;
             const timeoutId = setTimeout(() => {
                 alexaStateEmitter.removeListener(namespace, listener)
                 const error: ErrorHolder = {
@@ -105,14 +105,13 @@ export async function registerFrontends(): Promise<void> {
             Default: TRUE
         });
         if (enabled == TRUE) {
-            const alexaEmitter = <AlexaEndpointEmitter>await providersEmitter.getEndpointEmitter('alexa', getEndpointName(fe), true)
-            const alexaFe = new AlexaEventFrontend(alexaEmitter, fe);
+            const alexaConnector = await serviceProviderManager.getEndpointConnector('alexa', getEndpointName(fe), true)
+            const alexaFe = new AlexaEventFrontend(alexaConnector, fe);
             const mergedFe: MythAlexaEventFrontend = mergeObject(alexaFe, fe);
             buildEndpoint(mergedFe);
         }
     })
     await Promise.all(fePromises)
-    providersEmitter.emit('refresh', 'alexa');
 }
 
 

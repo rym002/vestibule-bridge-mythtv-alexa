@@ -3,19 +3,16 @@ import 'mocha';
 import * as nodeArp from 'node-arp';
 import { assert, SinonStub } from 'sinon';
 import Handler from '../src/MythWol';
-import { createMockFrontend, verifyRefreshCapability, getFrontend, getContextSandbox, createContextSandbox, restoreSandbox } from './MockHelper';
+import { createMockFrontend, getContextSandbox, getFrontend, verifyRefreshCapability } from './MockHelper';
 
 describe('MythWol', function () {
     beforeEach(async function () {
-        const sandbox = createContextSandbox(this)
+        const sandbox = getContextSandbox(this)
         this.currentTest['getMACStub'] = sandbox.stub(nodeArp, 'getMAC')
         const frontend = await createMockFrontend('remoteVideo', this);
         const handler = new Handler(frontend)
         const checkNodeStub = sandbox.stub(handler, 'checkNodeArp')
         this.currentTest['checkNodeStub'] = checkNodeStub
-    })
-    afterEach(function () {
-        restoreSandbox(this)
     })
     context('Alexa Shadow', function () {
         context('refreshCapability', function () {

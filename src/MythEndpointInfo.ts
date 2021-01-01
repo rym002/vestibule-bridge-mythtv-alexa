@@ -7,11 +7,11 @@ const ALEXA_FRIENDLY_NAME = "AlexaFriendlyName";
 
 export default class FrontendInfo implements InfoEmitter {
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaEmitter.on('refreshInfo', this.refreshInfo.bind(this));
+        fe.alexaConnector.listenRefreshEvents(this)
     }
     refreshInfo(deltaId: symbol): void {
         const promise = this.updateInfo(deltaId);
-        this.fe.alexaEmitter.watchDeltaUpdate(promise, deltaId);
+        this.fe.alexaConnector.watchDeltaUpdate(promise, deltaId);
     }
 
     private async updateInfo(deltaId: symbol): Promise<void> {
@@ -29,6 +29,6 @@ export default class FrontendInfo implements InfoEmitter {
             displayCategories: ['TV'],
             endpointId: getEndpointName(this.fe)
         }
-        this.fe.alexaEmitter.emit('info', endpointInfo, deltaId);
+        this.fe.alexaConnector.updateInfo(endpointInfo, deltaId);
     }
 }

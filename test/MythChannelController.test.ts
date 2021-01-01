@@ -1,28 +1,24 @@
 import { ChannelController } from '@vestibule-link/alexa-video-skill-types';
+import { ChannelLookup } from '@vestibule-link/bridge-mythtv';
 import { EndpointState } from '@vestibule-link/iot-types';
 import 'mocha';
 import Handler from '../src/MythChannelController';
-import { ActionMessage, createBackendNock, createContextSandbox, createFrontendNock, createMockFrontend, getContextSandbox, getFrontend, MockMythAlexaEventFrontend, restoreSandbox, verifyActionDirective, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
-import { ChannelLookup } from '@vestibule-link/bridge-mythtv';
+import { ActionMessage, createBackendNock, createFrontendNock, createMockFrontend, getConnectionHandlerStub, getContextSandbox, getFrontend, getTopicHandlerMap, MockMythAlexaEventFrontend, verifyActionDirective, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
 
 
 describe('MythChannelController', function () {
     beforeEach(async function () {
-        const sandbox = createContextSandbox(this)
         createVideoSourceListMock()
         const frontend = await createMockFrontend('channel', this);
         new Handler(frontend)
-        frontend.alexaEmitter.endpoint['Alexa.PlaybackStateReporter'] = {
+        frontend.alexaConnector.reportedState['Alexa.PlaybackStateReporter'] = {
             playbackState: {
                 state: 'PLAYING'
             }
         }
-        frontend.alexaEmitter.endpoint['Alexa.ChannelController'] = {
+        frontend.alexaConnector.reportedState['Alexa.ChannelController'] = {
             channel: currentChannel
         }
-    })
-    afterEach(function () {
-        restoreSandbox(this)
     })
 
     const currentChannel: ChannelController.Channel = {
@@ -105,9 +101,6 @@ describe('MythChannelController', function () {
             })
     }
     context('directives', function () {
-        before(function () {
-
-        })
         function getChannelChangeActions(channelNum: string): ActionMessage[] {
             const ret: ActionMessage[] = [];
             for (const chanPart of channelNum) {
@@ -137,7 +130,10 @@ describe('MythChannelController', function () {
                 it('should change to the channel number', async function () {
                     const sandbox = getContextSandbox(this)
                     sandbox.stub(ChannelLookup.prototype, 'isValidChanNum').withArgs('100').returns(true)
-                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                             number: '100'
                         }
@@ -148,7 +144,10 @@ describe('MythChannelController', function () {
                     }, returnState)
                 })
                 it('should error on invalid channel', async function () {
-                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                             number: '900'
                         }
@@ -163,7 +162,10 @@ describe('MythChannelController', function () {
                 it('should change to the callsign', async function () {
                     const sandbox = getContextSandbox(this)
                     sandbox.stub(ChannelLookup.prototype, 'searchCallSign').withArgs('KAB2').returns('200.1')
-                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                             callSign: 'KAB2'
                         }
@@ -179,7 +181,10 @@ describe('MythChannelController', function () {
                 it('should change to the affiliateCallSign', async function () {
                     const sandbox = getContextSandbox(this)
                     sandbox.stub(ChannelLookup.prototype, 'searchAffiliate').withArgs('AFF1').returns('300')
-                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                             affiliateCallSign: 'AFF1'
                         }
@@ -195,7 +200,10 @@ describe('MythChannelController', function () {
                 it('should change to the channel name', async function () {
                     const sandbox = getContextSandbox(this)
                     sandbox.stub(ChannelLookup.prototype, 'searchChannelName').withArgs('Test Channel Skip').returns('400')
-                    await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'ChangeChannel', {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        ChannelController.namespace, 'ChangeChannel', {
                         channel: {
                         },
                         channelMetadata: {
@@ -217,7 +225,10 @@ describe('MythChannelController', function () {
             it('should skip channel', async function () {
                 const sandbox = getContextSandbox(this)
                 sandbox.stub(ChannelLookup.prototype, 'getSkipChannelNum').withArgs('150', 2).returns('400')
-                await verifyActionDirective(getFrontend(this), ChannelController.namespace, 'SkipChannels', {
+                await verifyActionDirective(getFrontend(this),
+                    getConnectionHandlerStub(this),
+                    getTopicHandlerMap(this),
+                    ChannelController.namespace, 'SkipChannels', {
                     channelCount: 2
                 }, getChannelChangeActions('400'), {
                     error: false,
@@ -237,7 +248,8 @@ describe('MythChannelController', function () {
             })
             it('PLAY_CHANGED should change state to current channel', async function () {
                 stubCurrentChannelInfo(this)
-                await verifyMythEventState(getFrontend(this), 'PLAY_CHANGED', {
+                await verifyMythEventState(getContextSandbox(this),
+                    getFrontend(this), 'PLAY_CHANGED', {
                     SENDER: '',
                     CHANID: '1150'
                 }, ChannelController.namespace, 'channel', currentChannel)
@@ -245,7 +257,8 @@ describe('MythChannelController', function () {
         })
         context('Exit Watching', function () {
             it('LIVETV_ENDED event should change state to null', async function () {
-                await verifyMythEventState(getFrontend(this), 'LIVETV_ENDED', {
+                await verifyMythEventState(getContextSandbox(this),
+                    getFrontend(this), 'LIVETV_ENDED', {
                     SENDER: ''
                 }, ChannelController.namespace, 'channel', {
                     affiliateCallSign: null,
@@ -260,7 +273,7 @@ describe('MythChannelController', function () {
             stubCurrentChannelInfo(this)
             createFrontendChannelNock(getFrontend(this))
             await (<any>getFrontend(this)).initFromState()
-            await verifyRefreshState(getFrontend(this), ChannelController.namespace, 'channel', currentChannel)
+            await verifyRefreshState(getContextSandbox(this), getFrontend(this), ChannelController.namespace, 'channel', currentChannel)
         })
         it('refreshCapability should emit powerState', async function () {
             await verifyRefreshCapability(getContextSandbox(this), getFrontend(this), false, ChannelController.namespace, ['channel'])

@@ -1,40 +1,31 @@
 import { Directive } from "@vestibule-link/alexa-video-skill-types";
-import { providersEmitter } from "@vestibule-link/bridge-assistant";
-import { AlexaEndpointEmitter } from "@vestibule-link/bridge-assistant-alexa";
-import * as iot from "@vestibule-link/bridge-assistant-alexa/dist/iot";
+import { AlexaEndpointConnector } from "@vestibule-link/bridge-assistant-alexa";
 import { registerAssistant } from "@vestibule-link/bridge-assistant-alexa/dist/endpoint";
+import * as iot from "@vestibule-link/bridge-gateway-aws/dist/iot";
 import { mergeObject } from "@vestibule-link/bridge-mythtv";
 import { CachingEventFrontend } from "@vestibule-link/bridge-mythtv/dist/frontends";
+import { serviceProviderManager } from "@vestibule-link/bridge-service-provider";
 import { DirectiveResponse, EndpointCapability, EndpointState, RequestMessage, ResponseMessage, SubType } from "@vestibule-link/iot-types";
+import { mqtt } from 'aws-iot-device-sdk-v2';
 import { expect } from 'chai';
 import { EventEmitter } from "events";
-import { memoize, MemoizedFunction, keys } from "lodash";
+import { keys, memoize, MemoizedFunction } from "lodash";
+import * as moment from 'moment';
 import { MythSenderEventEmitter } from "mythtv-event-emitter";
 import { EventMapping } from "mythtv-event-emitter/dist/messages";
 import { Frontend, frontend } from "mythtv-services-api";
-import { mqtt } from 'aws-iot-device-sdk-v2';
-import { assert, match, SinonSandbox, createSandbox, SinonStub, StubbableType, SinonStubbedInstance, SinonStubbedMember, createStubInstance, stub } from "sinon";
-import { AlexaEventFrontend, MythAlexaEventFrontend, getEndpointName } from "../src/Frontend";
+import { createSandbox, match, SinonSandbox, SinonStubbedInstance, SinonStubbedMember, StubbableType } from "sinon";
+import { AlexaEventFrontend, getEndpointName, MythAlexaEventFrontend } from "../src/Frontend";
 import nock = require("nock");
-import * as moment from 'moment';
 
 const clientId = 'testClientId'
 
-type StubbedClass<T> = SinonStubbedInstance<T> & T;
-
-function createSinonStubInstance<T>(
-    constructor: StubbableType<T>,
-    overrides?: { [K in keyof T]?: SinonStubbedMember<T[K]> },
-): StubbedClass<T> {
-    const stub = createStubInstance<T>(constructor, overrides);
-    return stub as unknown as StubbedClass<T>;
-}
 export interface MockMythAlexaEventFrontend extends MythAlexaEventFrontend {
     resetDeltaId(): void
 }
 class MockAlexaFrontend {
     readonly mythEventEmitter: MythSenderEventEmitter
-    readonly alexaEmitter: AlexaEndpointEmitter
+    readonly alexaConnector: AlexaEndpointConnector
     readonly masterBackendEmitter: MythSenderEventEmitter
     private readonly memoizeEventDelta: MemoizedFunction
     eventDeltaId: () => symbol
@@ -44,7 +35,7 @@ class MockAlexaFrontend {
         })
         this.eventDeltaId = memoizeEventDelta;
         this.memoizeEventDelta = memoizeEventDelta
-        this.alexaEmitter = fe.alexaEmitter
+        this.alexaConnector = fe.alexaConnector
         this.mythEventEmitter = fe.mythEventEmitter
         this.masterBackendEmitter = fe.masterBackendEmitter
     }
@@ -64,27 +55,13 @@ export function createBackendNock(service: string) {
     return nock("http://localhost:6544/" + service)
 }
 
-let createConnectionStub: SinonStub
-let connectionStub: StubbedClass<mqtt.MqttClientConnection>
 const encoder = new TextEncoder()
-const topicHandlerMap = {}
-async function emitTopic(listenTopic: string, topic: string, req: any) {
-    await topicHandlerMap[listenTopic](topic, encoder.encode(JSON.stringify(req)))
-}
-export async function initAssistant() {
-    process.env.CLIENT_ID = clientId
-    if (!connectionStub) {
-        connectionStub = createSinonStubInstance(mqtt.MqttClientConnection)
-        connectionStub.publish.returns(Promise.resolve({}))
-        connectionStub.subscribe.callsFake((topic, qos, on_message) => {
-            topicHandlerMap[topic] = on_message
-            return Promise.resolve({
-                topic: topic,
-                qos: qos
-            })
-        })
-        createConnectionStub = stub(iot, 'createConnection').returns(Promise.resolve(connectionStub))
-        await registerAssistant();
+async function emitTopic(topicHandlerMap: TopicHandlerMap, listenTopic: string, topic: string, req: any) {
+    const topicHandler = topicHandlerMap[listenTopic]
+    if (topicHandler) {
+        await topicHandler(topic, encoder.encode(JSON.stringify(req)))
+    } else {
+        throw new Error(`Topic Handler not found for ${listenTopic}`)
     }
 }
 export async function createMockFrontend(hostname: string, context: Mocha.Context): Promise<MockMythAlexaEventFrontend> {
@@ -97,12 +74,11 @@ export async function createMockFrontend(hostname: string, context: Mocha.Contex
         }).reply(200, {
             String: '6547'
         });
-    await initAssistant();
     const fe = await frontend(hostname);
-    const alexaEmitter = <AlexaEndpointEmitter>await providersEmitter.getEndpointEmitter('alexa', getEndpointName(fe), true)
+    const alexaConnector = await serviceProviderManager.getEndpointConnector('alexa', getEndpointName(fe), true)
     const mythFe = new CachingEventFrontend(fe, new EventEmitter(), new EventEmitter())
     const mergedMythFe = mergeObject(mythFe, fe);
-    const alexaFe = new AlexaEventFrontend(alexaEmitter, mergedMythFe);
+    const alexaFe = new AlexaEventFrontend(alexaConnector, mergedMythFe);
     const mergedFe = mergeObject(alexaFe, mergedMythFe);
     const mockFe = new MockAlexaFrontend(mergedFe)
     const mergedMockFe = mergeObject(mockFe, mergedFe);
@@ -111,59 +87,40 @@ export async function createMockFrontend(hostname: string, context: Mocha.Contex
 }
 
 export async function verifyRefreshCapability<NS extends keyof EndpointCapability>(sandbox: SinonSandbox, frontend: MythAlexaEventFrontend, isAsync: boolean, expectedNamespace: NS, expectedCapability: SubType<EndpointCapability, NS>) {
-    const emitterPromise = new Promise((resolve, reject) => {
-        frontend.alexaEmitter.once('capability', (namespace, value, deltaId) => {
-            try {
-                expect(namespace).to.equal(expectedNamespace)
-                expect(deltaId).to.equal(frontend.eventDeltaId())
-                expect(value).eql(expectedCapability)
-                resolve()
-            } catch (err) {
-                reject(err)
-            }
-        })
-    })
-
-    const watchDeltaUpdateSpy = sandbox.spy(frontend.alexaEmitter, 'watchDeltaUpdate')
-    frontend.alexaEmitter.emit('refreshCapability', frontend.eventDeltaId());
+    const updateCapabilitySpy = sandbox.spy(frontend.alexaConnector, 'updateCapability')
+    const watchDeltaUpdateSpy = sandbox.spy(frontend.alexaConnector, 'watchDeltaUpdate')
+    frontend.alexaConnector.refreshCapability(frontend.eventDeltaId());
+    await frontend.alexaConnector.completeDeltaSettings(frontend.eventDeltaId())
     if (isAsync) {
-        assert.calledOnce(watchDeltaUpdateSpy)
-        assert.calledWith(watchDeltaUpdateSpy, match.any, frontend.eventDeltaId())
+        sandbox.assert.calledOnce(watchDeltaUpdateSpy)
+        sandbox.assert.calledWith(watchDeltaUpdateSpy, match.any, frontend.eventDeltaId())
     }
-    await emitterPromise;
+
+    sandbox.assert.calledWith(updateCapabilitySpy, expectedNamespace, expectedCapability, frontend.eventDeltaId())
 }
 
 export async function verifyState<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(
-    frontend: MythAlexaEventFrontend, expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>,
+    sandbox: SinonSandbox, frontend: MythAlexaEventFrontend,
+    expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>,
     triggerFunction: Function) {
-    const emitterPromise = new Promise((resolve, reject) => {
-        frontend.alexaEmitter.once('state', (namespace, name, value, deltaId) => {
-            try {
-                expect(namespace).to.equal(expectedNamespace)
-                expect(name).to.equal(expectedName)
-                // expect(deltaId).to.equal(frontend.eventDeltaId())
-                expect(value).eql(expectedState)
-                resolve()
-            } catch (err) {
-                reject(err)
-            }
-        })
-    })
+    const updateStateSpy = sandbox.spy(frontend.alexaConnector, 'updateState')
     triggerFunction()
-    await emitterPromise;
+    await frontend.alexaConnector.completeDeltaState(frontend.eventDeltaId())
+    sandbox.assert.calledWith(updateStateSpy, expectedNamespace, expectedName, expectedState)
 }
 
 export async function verifyRefreshState<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(
-    frontend: MythAlexaEventFrontend, expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>) {
-    await verifyState(frontend, expectedNamespace, expectedName, expectedState, () => {
-        frontend.alexaEmitter.emit('refreshState', frontend.eventDeltaId())
+    sandbox: SinonSandbox, frontend: MythAlexaEventFrontend,
+    expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>) {
+    await verifyState(sandbox, frontend, expectedNamespace, expectedName, expectedState, () => {
+        frontend.alexaConnector.refreshState(frontend.eventDeltaId())
     })
 }
 
 export async function verifyMythEventState<NS extends keyof EndpointState, N extends keyof EndpointState[NS], T extends keyof EventMapping, P extends EventMapping[T]>(
-    frontend: MythAlexaEventFrontend, eventType: T, eventMessage: P,
+    sandbox: SinonSandbox, frontend: MythAlexaEventFrontend, eventType: T, eventMessage: P,
     expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>, emitBackend?: boolean) {
-    await verifyState(frontend, expectedNamespace, expectedName, expectedState, () => {
+    await verifyState(sandbox, frontend, expectedNamespace, expectedName, expectedState, () => {
         if (emitBackend) {
             frontend.masterBackendEmitter.emit(eventType, eventMessage)
         } else {
@@ -178,7 +135,8 @@ export function toBool(data: boolean) {
 }
 
 export async function verifyActionDirective<NS extends Directive.Namespaces, N extends keyof Directive.NamedMessage[NS], DN extends keyof DirectiveResponse[NS]>(
-    frontend: MythAlexaEventFrontend, namespace: NS, name: N,
+    frontend: MythAlexaEventFrontend, connectionStub:StubbedClass<mqtt.MqttClientConnection>, topicHandlerMap:TopicHandlerMap, 
+    namespace: NS, name: N,
     requestMessage: Directive.NamedMessage[NS][N] extends { payload: any } ? Directive.NamedMessage[NS][N]['payload'] : never,
     expectedMythtvActions: ActionMessage[],
     expectedResponse: ResponseMessage<DirectiveResponse[NS][DN] extends { payload: any } ? DirectiveResponse[NS][DN]['payload'] : never>,
@@ -192,13 +150,13 @@ export async function verifyActionDirective<NS extends Directive.Namespaces, N e
             }).reply(200, toBool(mythAction.response))
     })
     if (stateChange) {
-        const stateEmitter = <EventEmitter>frontend.alexaEmitter.alexaStateEmitter
+        const stateEmitter = <EventEmitter>frontend.alexaConnector.alexaStateEmitter
         keys(stateChange).forEach((key) => {
             stateEmitter.on('newListener', (event, listener) => {
                 if (event == key) {
                     process.nextTick(() => {
                         keys(stateChange[key]).forEach((stateKey) => {
-                            frontend.alexaEmitter.alexaStateEmitter.emit(<never>key, <never>stateKey, <never>stateChange[key][stateKey])
+                            frontend.alexaConnector.alexaStateEmitter.emit(<never>key, <never>stateKey, <never>stateChange[key][stateKey])
                         })
                     })
                 }
@@ -212,7 +170,7 @@ export async function verifyActionDirective<NS extends Directive.Namespaces, N e
         }
     }
     const topicBase = getDirectiveTopicBase(frontend)
-    await emitTopic(`${topicBase}#`, `${topicBase}${namespace}/${name}`, mqttRequest)
+    await emitTopic(topicHandlerMap,`${topicBase}#`, `${topicBase}${namespace}/${name}`, mqttRequest)
     expect(connectionStub.publish.calledWith(mqttRequest.replyTopic.sync, expectedResponse), 'Unexpected response')
     expect(frontendNock.isDone()).to.be.true
 }
@@ -229,7 +187,7 @@ export function getFrontend(context: Mocha.Context): MockMythAlexaEventFrontend 
         : context.test['frontend']
 }
 
-export function createContextSandbox(context: Mocha.Context): SinonSandbox {
+function createContextSandbox(context: Mocha.Context): SinonSandbox {
     const sandbox = createSandbox({
         useFakeTimers: true
     })
@@ -237,14 +195,24 @@ export function createContextSandbox(context: Mocha.Context): SinonSandbox {
     return sandbox
 }
 
-export function restoreSandbox(context: Mocha.Context) {
+function restoreSandbox(context: Mocha.Context) {
     context.currentTest['sandbox'].restore()
 }
 
 export function getContextSandbox(context: Mocha.Context): SinonSandbox {
-    return context.test['sandbox']
+    let ret = <SinonSandbox>context.test['sandbox']
+    if (!ret) {
+        ret = context.currentTest['sandbox']
+    }
+    return ret
+}
+export function getTopicHandlerMap(context: Mocha.Context): TopicHandlerMap {
+    return context.test['topicHandlerMap']
 }
 
+export function getConnectionHandlerStub(context: Mocha.Context):StubbedClass<mqtt.MqttClientConnection>{
+    return context.test['connection']
+}
 type PickType<O, T> = {
     [K in keyof O]: O[K] extends T ? K : never
 }[keyof O]
@@ -261,3 +229,45 @@ function getDirectiveTopicBase(fe: Frontend.Service) {
     const endpointId = getEndpointName(fe)
     return `vestibule-bridge/${clientId}/alexa/endpoint/${endpointId}/directive/`
 }
+
+
+interface TopicHandlerMap {
+    [index: string]: (topic: string, payload: ArrayBuffer) => void | Promise<void>
+}
+
+type StubbedClass<T> = SinonStubbedInstance<T> & T;
+
+function createSinonStubInstance<T>(
+    sandbox: SinonSandbox,
+    constructor: StubbableType<T>,
+    overrides?: { [K in keyof T]?: SinonStubbedMember<T[K]> },
+): StubbedClass<T> {
+    const stub = sandbox.createStubInstance<T>(constructor, overrides);
+    return stub as unknown as StubbedClass<T>;
+}
+
+beforeEach(function () {
+    const sandbox = createContextSandbox(this)
+    const topicHandlerMap: TopicHandlerMap = {}
+
+    const connectionStub = createSinonStubInstance(sandbox, mqtt.MqttClientConnection)
+    connectionStub.publish.returns(Promise.resolve({}))
+    connectionStub.subscribe.callsFake((topic, qos, on_message) => {
+        topicHandlerMap[topic] = on_message
+        return Promise.resolve({
+            topic: topic,
+            qos: qos
+        })
+    })
+    const createConnectionStub = sandbox.stub(iot, 'awsConnection').returns(connectionStub)
+    this.currentTest['topicHandlerMap'] = topicHandlerMap
+    this.currentTest['connection'] = connectionStub
+})
+afterEach(function () {
+    restoreSandbox(this)
+})
+
+before(async function () {
+    process.env.AWS_CLIENT_ID = clientId
+    await registerAssistant()
+})

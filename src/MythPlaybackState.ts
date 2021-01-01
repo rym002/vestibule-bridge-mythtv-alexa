@@ -7,8 +7,7 @@ const DirectiveName: DirectiveType = PlaybackStateReporter.namespace;
 export default class FrontendPlaybackState
     implements StateEmitter, CapabilityEmitter {
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaEmitter.on('refreshState', this.refreshState.bind(this));
-        fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
+        fe.alexaConnector.listenRefreshEvents(this)
         fe.mythEventEmitter.on('PLAY_CHANGED', message => {
             this.updatePlayingState(this.fe.eventDeltaId())
         });
@@ -27,7 +26,7 @@ export default class FrontendPlaybackState
     }
     refreshState(deltaId: symbol): void {
         const promise = this.updatePlaybackState(deltaId);
-        this.fe.alexaEmitter.watchDeltaUpdate(promise, deltaId);
+        this.fe.alexaConnector.watchDeltaUpdate(promise, deltaId);
     }
 
     private async updatePlaybackState(deltaId: symbol): Promise<void> {
@@ -35,7 +34,7 @@ export default class FrontendPlaybackState
         this.updateState(state, deltaId);
     }
     refreshCapability(deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('capability', DirectiveName, ['playbackState'], deltaId);
+        this.fe.alexaConnector.updateCapability(DirectiveName, ['playbackState'], deltaId);
     }
     private async playbackState(): Promise<PlaybackStateReporter.States> {
         if (this.fe.isWatching()) {
@@ -52,7 +51,7 @@ export default class FrontendPlaybackState
     }
 
     private updateState(state: PlaybackStateReporter.States, deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('state', DirectiveName, 'playbackState', {
+        this.fe.alexaConnector.updateState(DirectiveName, 'playbackState', {
             state: state
         }, deltaId);
     }

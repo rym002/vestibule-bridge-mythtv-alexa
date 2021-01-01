@@ -1,17 +1,18 @@
-import { providersEmitter } from '@vestibule-link/bridge-assistant';
+import { serviceProviderManager } from '@vestibule-link/bridge-service-provider';
 import { loadFrontends } from '@vestibule-link/bridge-mythtv/dist/frontends';
-import { expect } from 'chai';
+import { expect, use } from 'chai';
 import 'mocha';
 import * as nock from 'nock';
 import * as nodeArp from 'node-arp';
 import { getEndpointNameFromHostname, registerFrontends } from '../src/Frontend';
-import { createContextSandbox, initAssistant, restoreSandbox } from './MockHelper';
+import { getContextSandbox } from './MockHelper';
+const chaiAsPromised = require('chai-as-promised')
+
+use(chaiAsPromised)
+
 describe('Frontend', () => {
-    after(function () {
-        restoreSandbox(this)
-    })
-    before(async function () {
-        const sandbox = createContextSandbox(this)
+    beforeEach(async function () {
+        const sandbox = getContextSandbox(this)
         sandbox.stub(nodeArp, 'getMAC')
         const mythNock = nock("http://localhost:6544/Myth")
             .get('/GetFrontends')
@@ -78,12 +79,11 @@ describe('Frontend', () => {
     })
 
     it('should create', async () => {
-        await initAssistant()
         await loadFrontends();
         await registerFrontends()
-        const good = await providersEmitter.getEndpointEmitter('alexa', getEndpointNameFromHostname('hostgood'), false)
-        const bad = await providersEmitter.getEndpointEmitter('alexa', getEndpointNameFromHostname('hostbad'), false)
+        const good = await serviceProviderManager.getEndpointConnector('alexa', getEndpointNameFromHostname('hostgood'), false)
+        const bad = serviceProviderManager.getEndpointConnector('alexa', getEndpointNameFromHostname('hostbad'), false)
         expect(good).to.not.be.undefined
-        expect(bad).to.be.undefined
+        await expect(bad).to.eventually.be.rejectedWith(Error)
     })
 })

@@ -1,17 +1,13 @@
 import { Launcher } from '@vestibule-link/alexa-video-skill-types';
 import 'mocha';
 import Handler from '../src/MythLauncher';
-import { createContextSandbox, createMockFrontend, getContextSandbox, getFrontend, restoreSandbox, verifyActionDirective, verifyRefreshCapability } from './MockHelper';
+import { createMockFrontend, getConnectionHandlerStub, getContextSandbox, getFrontend, getTopicHandlerMap, verifyActionDirective, verifyRefreshCapability } from './MockHelper';
 
 
 describe('MythLauncher', function () {
     beforeEach(async function () {
-        createContextSandbox(this)
         const frontend = await createMockFrontend('launcher', this);
         new Handler(frontend)
-    })
-    afterEach(function () {
-        restoreSandbox(this)
     })
     context('directives', function () {
         context('LaunchTarget', function () {
@@ -27,10 +23,13 @@ describe('MythLauncher', function () {
                         identifier: 'amzn1.alexa-ask-target.shortcut.68228',
                         name: 'Guide'
                     }
-                    await verifyActionDirective(getFrontend(this), Launcher.namespace, 'LaunchTarget', payload, [{
-                        actionName: 'GUIDE',
-                        response: true
-                    }], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        Launcher.namespace, 'LaunchTarget', payload, [{
+                            actionName: 'GUIDE',
+                            response: true
+                        }], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -49,10 +48,13 @@ describe('MythLauncher', function () {
                         identifier: 'amzn1.alexa-ask-target.shortcut.69247',
                         name: 'DVR'
                     }
-                    await verifyActionDirective(getFrontend(this), Launcher.namespace, 'LaunchTarget', payload, [{
-                        actionName: 'TV Recording Playback',
-                        response: true
-                    }], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        Launcher.namespace, 'LaunchTarget', payload, [{
+                            actionName: 'TV Recording Playback',
+                            response: true
+                        }], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -63,10 +65,13 @@ describe('MythLauncher', function () {
                         identifier: 'amzn1.alexa-ask-target.shortcut.68228',
                         name: 'Guide'
                     }
-                    await verifyActionDirective(getFrontend(this), Launcher.namespace, 'LaunchTarget', payload, [{
-                        actionName: 'Program Guide',
-                        response: true
-                    }], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        Launcher.namespace, 'LaunchTarget', payload, [{
+                            actionName: 'Program Guide',
+                            response: true
+                        }], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -77,10 +82,13 @@ describe('MythLauncher', function () {
                         identifier: 'amzn1.alexa-ask-target.shortcut.33122',
                         name: 'Home'
                     }
-                    await verifyActionDirective(getFrontend(this), Launcher.namespace, 'LaunchTarget', payload, [{
-                        actionName: 'Main Menu',
-                        response: true
-                    }], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        Launcher.namespace, 'LaunchTarget', payload, [{
+                            actionName: 'Main Menu',
+                            response: true
+                        }], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -91,10 +99,13 @@ describe('MythLauncher', function () {
                         identifier: 'amzn1.alexa-ask-target.shortcut.82117',
                         name: 'Info'
                     }
-                    await verifyActionDirective(getFrontend(this), Launcher.namespace, 'LaunchTarget', payload, [{
-                        actionName: 'INFO',
-                        response: true
-                    }], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        Launcher.namespace, 'LaunchTarget', payload, [{
+                            actionName: 'INFO',
+                            response: true
+                        }], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -105,10 +116,13 @@ describe('MythLauncher', function () {
                         identifier: 'amzn1.alexa-ask-target.shortcut.84333',
                         name: 'On Now'
                     }
-                    await verifyActionDirective(getFrontend(this), Launcher.namespace, 'LaunchTarget', payload, [{
-                        actionName: 'Live TV',
-                        response: true
-                    }], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        Launcher.namespace, 'LaunchTarget', payload, [{
+                            actionName: 'Live TV',
+                            response: true
+                        }], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -119,10 +133,13 @@ describe('MythLauncher', function () {
                         identifier: 'amzn1.alexa-ask-target.shortcut.06715',
                         name: 'Picture in Picture'
                     }
-                    await verifyActionDirective(getFrontend(this), Launcher.namespace, 'LaunchTarget', payload, [{
-                        actionName: 'TOGGLEPIPMODE',
-                        response: true
-                    }], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        Launcher.namespace, 'LaunchTarget', payload, [{
+                            actionName: 'TOGGLEPIPMODE',
+                            response: true
+                        }], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -133,10 +150,13 @@ describe('MythLauncher', function () {
                         identifier: 'amzn1.alexa-ask-target.shortcut.52304',
                         name: 'Recordings'
                     }
-                    await verifyActionDirective(getFrontend(this), Launcher.namespace, 'LaunchTarget', payload, [{
-                        actionName: 'TV Recording Playback',
-                        response: true
-                    }], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        Launcher.namespace, 'LaunchTarget', payload, [{
+                            actionName: 'TV Recording Playback',
+                            response: true
+                        }], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -147,10 +167,13 @@ describe('MythLauncher', function () {
                         identifier: 'amzn1.alexa-ask-target.shortcut.48625',
                         name: 'Scheduled Recordings'
                     }
-                    await verifyActionDirective(getFrontend(this), Launcher.namespace, 'LaunchTarget', payload, [{
-                        actionName: 'Manage Recordings / Fix Conflicts',
-                        response: true
-                    }], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        Launcher.namespace, 'LaunchTarget', payload, [{
+                            actionName: 'Manage Recordings / Fix Conflicts',
+                            response: true
+                        }], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -161,10 +184,13 @@ describe('MythLauncher', function () {
                         identifier: 'amzn1.alexa-ask-target.shortcut.82307',
                         name: 'VOD'
                     }
-                    await verifyActionDirective(getFrontend(this), Launcher.namespace, 'LaunchTarget', payload, [{
-                        actionName: 'Video Default',
-                        response: true
-                    }], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        Launcher.namespace, 'LaunchTarget', payload, [{
+                            actionName: 'Video Default',
+                            response: true
+                        }], {
                         error: false,
                         payload: {},
                         stateChange: undefined

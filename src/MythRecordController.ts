@@ -20,9 +20,7 @@ export default class FrontendRecord
     readonly supported: SupportedDirectives<DirectiveType> = ['StartRecording', 'StopRecording'];
     constructor(readonly fe: MythAlexaEventFrontend) {
         const refreshStateBind = this.refreshState.bind(this);
-        fe.alexaEmitter.on('refreshState', refreshStateBind);
-        fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
-        fe.alexaEmitter.registerDirectiveHandler(DirectiveName, this);
+        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
         fe.mythEventEmitter.on('PLAY_CHANGED', message => {
             if (this.fe.isWatchingTv() && message.CHANID && message.STARTTIME) {
                 this.updateState('NOT_RECORDING', this.fe.eventDeltaId())
@@ -47,7 +45,7 @@ export default class FrontendRecord
         fe.masterBackendEmitter.on('SCHEDULER_RAN', message => {
             if (this.fe.isWatchingTv() && this.currentState) {
                 const promise = this.updateRecordingStateFromCurrentProgram(this.fe.eventDeltaId());
-                this.fe.alexaEmitter.watchDeltaUpdate(promise, this.fe.eventDeltaId());
+                this.fe.alexaConnector.watchDeltaUpdate(promise, this.fe.eventDeltaId());
             }
         })
         fe.mythEventEmitter.on('LIVETV_ENDED', message => {
@@ -57,7 +55,7 @@ export default class FrontendRecord
     }
     refreshState(deltaId: symbol): void {
         const promise = this.updateRecordingStateFromStatus(deltaId);
-        this.fe.alexaEmitter.watchDeltaUpdate(promise, deltaId);
+        this.fe.alexaConnector.watchDeltaUpdate(promise, deltaId);
     }
 
     private async updateRecordingStateFromStatus(deltaId: symbol): Promise<void> {
@@ -85,7 +83,7 @@ export default class FrontendRecord
         this.updateState(recordingState, deltaId);
     }
     refreshCapability(deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('capability', DirectiveName, ['RecordingState'], deltaId);
+        this.fe.alexaConnector.updateCapability(DirectiveName, ['RecordingState'], deltaId);
     }
 
     async StartRecording(payload: {}): Promise<Response> {
@@ -117,6 +115,6 @@ export default class FrontendRecord
     }
 
     private updateState(state: RecordController.States, deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('state', DirectiveName, 'RecordingState', state, deltaId);
+        this.fe.alexaConnector.updateState(DirectiveName, 'RecordingState', state, deltaId);
     }
 }

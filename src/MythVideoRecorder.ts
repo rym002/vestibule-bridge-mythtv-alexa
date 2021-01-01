@@ -18,11 +18,10 @@ export default class MythTvRecorder
     implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter {
     readonly supported: SupportedDirectives<DirectiveType> = ['CancelRecording', 'DeleteRecording', 'SearchAndRecord'];
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
-        fe.alexaEmitter.registerDirectiveHandler(DirectiveName, this);
+        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
     }
     refreshCapability(deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('capability', DirectiveName, true, deltaId);
+        this.fe.alexaConnector.updateCapability(DirectiveName, true, deltaId);
     }
     async SearchAndRecord(payload: VideoRecorder.RequestPayload): Promise<SearchAndRecordResponse> {
         payload.entities.forEach(e => {

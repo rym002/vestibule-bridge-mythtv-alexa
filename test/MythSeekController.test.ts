@@ -1,17 +1,13 @@
 import { SeekController } from '@vestibule-link/alexa-video-skill-types';
 import 'mocha';
 import Handler from '../src/MythSeekController';
-import { createBackendNock, createContextSandbox, createMockFrontend, getContextSandbox, getFrontend, restoreSandbox, verifyRefreshCapability } from './MockHelper';
+import { createBackendNock, createMockFrontend, getContextSandbox, getFrontend, verifyRefreshCapability } from './MockHelper';
 
 
 describe('MythSeekController', () => {
     beforeEach(async function () {
-        createContextSandbox(this)
         const frontend = await createMockFrontend('seek', this);
         new Handler(frontend)
-    })
-    afterEach(function () {
-        restoreSandbox(this)
     })
     context('directives', () => {
         it('should AdjustSeekPosition')

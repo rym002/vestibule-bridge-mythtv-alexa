@@ -16,8 +16,7 @@ export default class FrontendLauncher
     readonly defaultActionMappings = new Map<Launcher.Targets['identifier'], string>();
     readonly watchingTvActionMappings = new Map<Launcher.Targets['identifier'], string>();
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
-        fe.alexaEmitter.registerDirectiveHandler(DirectiveName, this);
+        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
         this.loadMappings()
     }
     private loadMappings() {
@@ -33,9 +32,10 @@ export default class FrontendLauncher
         this.watchingTvActionMappings.set('amzn1.alexa-ask-target.shortcut.68228', 'GUIDE')
     }
     refreshCapability(deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('capability', DirectiveName, true, deltaId);
+        this.fe.alexaConnector.updateCapability(DirectiveName, true, deltaId);
     }
     async LaunchTarget(payload: Launcher.Targets): Promise<Response> {
+        //TODO use events to update target
         let action: string | undefined;
         if (this.fe.isWatchingTv()) {
             action = this.watchingTvActionMappings.get(payload.identifier);

@@ -4,21 +4,17 @@ import { EventEmitter } from 'events';
 import 'mocha';
 import { ApiTypes } from 'mythtv-services-api';
 import Handler from '../src/MythRemoteVideoPlayer';
-import { createBackendNock, createContextSandbox, createFrontendNock, createMockFrontend, getContextSandbox, getFrontend, MockMythAlexaEventFrontend, restoreSandbox, toBool, verifyActionDirective, verifyRefreshCapability } from './MockHelper';
+import { createBackendNock, createFrontendNock, createMockFrontend, getConnectionHandlerStub, getContextSandbox, getFrontend, getTopicHandlerMap, MockMythAlexaEventFrontend, toBool, verifyActionDirective, verifyRefreshCapability } from './MockHelper';
 
 describe('MythRemoteVideoPlayer', function () {
     beforeEach(async function () {
-        createContextSandbox(this)
-        const frontend = await createMockFrontend('remoteVideo',this);
+        const frontend = await createMockFrontend('remoteVideo', this);
         new Handler(frontend)
-        frontend.alexaEmitter.endpoint['Alexa.PlaybackStateReporter'] = {
+        frontend.alexaConnector.reportedState['Alexa.PlaybackStateReporter'] = {
             playbackState: {
-                state:'PLAYING'
+                state: 'PLAYING'
             }
         }
-    })
-    afterEach(function () {
-        restoreSandbox(this)
     })
     context('directives', function () {
         context('SearchAndPlay', function () {
@@ -130,7 +126,10 @@ describe('MythRemoteVideoPlayer', function () {
                 it('should play the requested season and episode', async function () {
                     const backendNock = createDvrGetRecordedListNock(programs)
                     const frontendNock = createFrontendPlayRecordingNock(200, getFrontend(this))
-                    await verifyActionDirective(getFrontend(this), RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestSeason, [], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestSeason, [], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -142,7 +141,10 @@ describe('MythRemoteVideoPlayer', function () {
                 it('should play the first episode based on season and episode if not in request', async function () {
                     const backendNock = createDvrGetRecordedListNock(programs)
                     const frontendNock = createFrontendPlayRecordingNock(100, getFrontend(this))
-                    await verifyActionDirective(getFrontend(this), RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestNoSeason, [], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestNoSeason, [], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -158,7 +160,10 @@ describe('MythRemoteVideoPlayer', function () {
                     ]
                     const backendNock = createDvrGetRecordedListNock(programs)
                     const frontendNock = createFrontendPlayRecordingNock(100, getFrontend(this))
-                    await verifyActionDirective(getFrontend(this), RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestNoSeason, [], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestNoSeason, [], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -213,7 +218,10 @@ describe('MythRemoteVideoPlayer', function () {
                     const backendDvrNock = createDvrGetRecordedListNock([])
                     const backendVideoNock = createVideoGetVideoListNock(testVideos)
                     const frontendNock = createFrontendPlayVideoNock(300, getFrontend(this), false)
-                    await verifyActionDirective(getFrontend(this), RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestNoSeason, [], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestNoSeason, [], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -227,7 +235,10 @@ describe('MythRemoteVideoPlayer', function () {
                     const backendDvrNock = createDvrGetRecordedListNock([])
                     const backendVideoNock = createVideoGetVideoListNock(testVideos)
                     const frontendNock = createFrontendPlayVideoNock(200, getFrontend(this), false)
-                    await verifyActionDirective(getFrontend(this), RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestSeason, [], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestSeason, [], {
                         error: false,
                         payload: {},
                         stateChange: undefined
@@ -248,10 +259,13 @@ describe('MythRemoteVideoPlayer', function () {
                             })
                         }
                     })
-                    await verifyActionDirective(getFrontend(this), RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestSeason, [{
-                        actionName: 'STOPPLAYBACK',
-                        response: true
-                    }], {
+                    await verifyActionDirective(getFrontend(this),
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this),
+                        RemoteVideoPlayer.namespace, 'SearchAndPlay', testRequestSeason, [{
+                            actionName: 'STOPPLAYBACK',
+                            response: true
+                        }], {
                         error: false,
                         payload: {},
                         stateChange: undefined

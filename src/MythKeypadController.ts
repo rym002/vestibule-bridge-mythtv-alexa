@@ -29,11 +29,10 @@ export default class FrontendKeypadController
         'MORE': 'DETAILS'
     }
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
-        fe.alexaEmitter.registerDirectiveHandler(DirectiveName, this);
+        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
     }
     refreshCapability(deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('capability', DirectiveName, <KeypadController.Keys[]>keys(this.mappings), deltaId);
+        this.fe.alexaConnector.updateCapability(DirectiveName, <KeypadController.Keys[]>keys(this.mappings), deltaId);
     }
     async SendKeystroke(payload: KeypadController.SendKeystrokeRequest): Promise<Response> {
         await this.fe.SendAction({

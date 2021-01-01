@@ -13,17 +13,17 @@ export default class FrontendWol
     readonly getMAC = promisify(nodeArp.getMAC);
     private readonly spawnCommands = ['arp', 'ping'];
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
+        fe.alexaConnector.listenRefreshEvents(this)
     }
     refreshCapability(deltaId: symbol): void {
         const promise = this.updateCapability(deltaId);
-        this.fe.alexaEmitter.watchDeltaUpdate(promise, deltaId);
+        this.fe.alexaConnector.watchDeltaUpdate(promise, deltaId);
     }
     private async updateCapability(deltaId: symbol): Promise<void> {
         const capabilities = await this.capabilities();
-        this.fe.alexaEmitter.emit('capability', DirectiveName, capabilities, deltaId);
+        this.fe.alexaConnector.updateCapability(DirectiveName, capabilities, deltaId);
     }
-    async checkNodeArp(commandName: string):Promise<void> {
+    async checkNodeArp(commandName: string): Promise<void> {
         return new Promise((resolve, reject) => {
             const arp = spawn('which', [commandName])
             arp.on('error', (err) => {
@@ -39,7 +39,7 @@ export default class FrontendWol
     }
     private async capabilities(): Promise<string[] | undefined> {
         try {
-            const spawns = this.spawnCommands.map(async command=>{
+            const spawns = this.spawnCommands.map(async command => {
                 await this.checkNodeArp(command)
             })
             await Promise.all(spawns)

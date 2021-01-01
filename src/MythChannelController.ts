@@ -23,13 +23,11 @@ export default class FrontendChannel
         number: null
     }
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaEmitter.on('refreshState', this.refreshState.bind(this));
-        fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
-        fe.alexaEmitter.registerDirectiveHandler(DirectiveName, this);
+        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
         fe.mythEventEmitter.on('PLAY_CHANGED', message => {
             if (this.fe.isWatchingTv() && message.CHANID) {
                 const promise = this.updateStateFromChanId(Number(message.CHANID))
-                this.fe.alexaEmitter.watchDeltaUpdate(promise, this.fe.eventDeltaId());
+                this.fe.alexaConnector.watchDeltaUpdate(promise, this.fe.eventDeltaId());
             }
         });
         fe.mythEventEmitter.on('LIVETV_ENDED', message => {
@@ -42,10 +40,10 @@ export default class FrontendChannel
 
     refreshState(deltaId: symbol): void {
         const promise = this.updateStateAndChannel(deltaId);
-        this.fe.alexaEmitter.watchDeltaUpdate(promise, deltaId);
+        this.fe.alexaConnector.watchDeltaUpdate(promise, deltaId);
     }
     refreshCapability(deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('capability', DirectiveName, ['channel'], deltaId);
+        this.fe.alexaConnector.updateCapability(DirectiveName, ['channel'], deltaId);
     }
 
     async ChangeChannel(payload: ChannelController.ChangeChannelRequest): Promise<Response> {
@@ -87,7 +85,7 @@ export default class FrontendChannel
     async SkipChannels(payload: ChannelController.SkipChannelsRequest): Promise<Response> {
         const channelCount = payload.channelCount
         if (this.fe.isWatchingTv()) {
-            const currentChannel = this.fe.alexaEmitter.endpoint[ChannelController.namespace].channel
+            const currentChannel = this.fe.alexaConnector.reportedState[ChannelController.namespace].channel
             const channelLookup = await ChannelLookup.instance();
             const nextChannel = channelLookup.getSkipChannelNum(currentChannel.number, channelCount);
             if (nextChannel) {
@@ -192,9 +190,9 @@ export default class FrontendChannel
         this.updateWatchedState(this.fe.eventDeltaId(), state)
     }
     private updateWatchedState(deltaId: symbol, state: ChannelController.Channel) {
-        this.fe.alexaEmitter.emit('state', DirectiveName, 'channel', state, deltaId);
+        this.fe.alexaConnector.updateState(DirectiveName, 'channel', state, deltaId);
     }
     private updateStoppedState(deltaId: symbol) {
-        this.fe.alexaEmitter.emit('state', DirectiveName, 'channel', this.emptyChannel, deltaId);
+        this.fe.alexaConnector.updateState(DirectiveName, 'channel', this.emptyChannel, deltaId);
     }
 }

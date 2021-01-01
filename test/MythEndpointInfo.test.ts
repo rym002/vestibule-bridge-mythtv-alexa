@@ -1,23 +1,19 @@
 import { EndpointInfo } from '@vestibule-link/iot-types';
-import { expect } from 'chai';
 import 'mocha';
 import { getEndpointName, MANUFACTURER_NAME } from '../src/Frontend';
 import Handler from '../src/MythEndpointInfo';
-import { createBackendNock, createContextSandbox, createMockFrontend, getFrontend, restoreSandbox } from './MockHelper';
+import { createBackendNock, createMockFrontend, getContextSandbox, getFrontend } from './MockHelper';
 
 
 describe('MythEndpointInfo', function () {
     beforeEach(async function () {
-        createContextSandbox(this)
         const frontend = await createMockFrontend('endpointinfo', this);
         new Handler(frontend)
-    })
-    afterEach(function () {
-        restoreSandbox(this)
     })
     context('Alexa Shadow', function () {
         it('should refreshInfo', async function () {
             const frontend = getFrontend(this)
+            const sandbox = getContextSandbox(this)
             const alexaDeviceName = frontend.hostname() + ' Alexa'
             const frontendNock = createBackendNock('Myth')
                 .get('/GetSetting').query({
@@ -36,20 +32,10 @@ describe('MythEndpointInfo', function () {
                 description: MANUFACTURER_NAME + ' Frontend ' + frontend.hostname(),
                 endpointId: getEndpointName(frontend)
             }
-            const emitterPromise = new Promise((resolve, reject) => {
-                frontend.alexaEmitter.once('info', (endpointInfo, deltaId) => {
-                    try {
-                        expect(deltaId).to.equal(frontend.eventDeltaId())
-                        expect(endpointInfo).eql(expectedEndpointInfo)
-                        expect(frontendNock.isDone()).to.be.true
-                        resolve()
-                    } catch (err) {
-                        reject(err)
-                    }
-                })
-            })
-            frontend.alexaEmitter.emit('refreshInfo', frontend.eventDeltaId())
-            await emitterPromise;
+            const updateInfoSpy = sandbox.spy(frontend.alexaConnector,'updateInfo')
+            frontend.alexaConnector.refreshInfo(frontend.eventDeltaId())
+            await frontend.alexaConnector.completeDeltaSettings(frontend.eventDeltaId())
+            sandbox.assert.calledWith(updateInfoSpy,expectedEndpointInfo,frontend.eventDeltaId())
         })
     })
 

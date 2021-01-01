@@ -17,18 +17,17 @@ export default class FrontendSeek
     controlPort: number = 6546;
     readonly supported: SupportedDirectives<DirectiveType> = ['AdjustSeekPosition'];
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
-        fe.alexaEmitter.registerDirectiveHandler(DirectiveName, this);
+        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
     }
     refreshCapability(deltaId: symbol): void {
         const promise = this.updateCapability(deltaId);
-        this.fe.alexaEmitter.watchDeltaUpdate(promise, deltaId);
+        this.fe.alexaConnector.watchDeltaUpdate(promise, deltaId);
     }
 
     private async updateCapability(deltaId: symbol): Promise<void> {
         try {
             await this.verify();
-            this.fe.alexaEmitter.emit('capability', DirectiveName, true, deltaId);
+            this.fe.alexaConnector.updateCapability(DirectiveName, true, deltaId);
         } catch (e) {
             console.log(e)
         }

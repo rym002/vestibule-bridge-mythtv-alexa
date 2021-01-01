@@ -8,8 +8,7 @@ export default class FrontendHealth
     implements StateEmitter, CapabilityEmitter {
 
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaEmitter.on('refreshState', this.refreshState.bind(this));
-        fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
+        fe.alexaConnector.listenRefreshEvents(this)
         fe.mythEventEmitter.on('CLIENT_CONNECTED', message => {
             this.updateConnectedState(this.fe.eventDeltaId())
         });
@@ -23,7 +22,7 @@ export default class FrontendHealth
     }
 
     refreshCapability(deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('capability', DirectiveName, ['connectivity'], deltaId);
+        this.fe.alexaConnector.updateCapability(DirectiveName, ['connectivity'], deltaId);
     }
 
     private endpointState(): EndpointHealth.States {
@@ -31,7 +30,7 @@ export default class FrontendHealth
     }
 
     private updateState(state: EndpointHealth.States, deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('state', DirectiveName, 'connectivity', {
+        this.fe.alexaConnector.updateState(DirectiveName, 'connectivity', {
             value: state
         }, deltaId);
     }

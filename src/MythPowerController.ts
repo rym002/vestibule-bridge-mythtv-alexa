@@ -14,9 +14,7 @@ export default class FrontendPower
     implements SubType<DirectiveHandlers, DirectiveType>, StateEmitter, CapabilityEmitter {
     readonly supported: SupportedDirectives<DirectiveType> = [];
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaEmitter.on('refreshState', this.refreshState.bind(this));
-        fe.alexaEmitter.on('refreshCapability', this.refreshCapability.bind(this));
-        fe.alexaEmitter.registerDirectiveHandler(DirectiveName, this);
+        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
         fe.mythEventEmitter.on('CLIENT_CONNECTED', message => {
             this.updateOnState(this.fe.eventDeltaId())
         });
@@ -30,7 +28,7 @@ export default class FrontendPower
     }
 
     refreshCapability(deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('capability', DirectiveName, ['powerState'], deltaId);
+        this.fe.alexaConnector.updateCapability(DirectiveName, ['powerState'], deltaId);
     }
 
     TurnOn(payload: {}): Promise<Response> {
@@ -49,7 +47,7 @@ export default class FrontendPower
     }
 
     private updateState(state: PowerController.States, deltaId: symbol): void {
-        this.fe.alexaEmitter.emit('state', DirectiveName, 'powerState', state, deltaId);
+        this.fe.alexaConnector.updateState(DirectiveName, 'powerState', state, deltaId);
     }
 
     powerState(): PowerController.States {
