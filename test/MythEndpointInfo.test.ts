@@ -8,7 +8,8 @@ import { createBackendNock, createMockFrontend, getContextSandbox, getFrontend }
 describe('MythEndpointInfo', function () {
     beforeEach(async function () {
         const frontend = await createMockFrontend('endpointinfo', this);
-        new Handler(frontend)
+        const handler = new Handler(frontend)
+        await handler.register()
     })
     context('Alexa Shadow', function () {
         it('should refreshInfo', async function () {

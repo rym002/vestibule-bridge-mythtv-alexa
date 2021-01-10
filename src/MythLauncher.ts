@@ -1,7 +1,7 @@
 import { Launcher } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from "@vestibule-link/bridge-assistant-alexa";
 import { EndpointState, SubType } from "@vestibule-link/iot-types";
-import { MythAlexaEventFrontend } from "./Frontend";
+import { MythAlexaEventFrontend, RegisteringDirective } from "./Frontend";
 
 type DirectiveType = Launcher.NamespaceType;
 const DirectiveName: DirectiveType = Launcher.namespace;
@@ -11,13 +11,15 @@ type Response = {
 }
 
 export default class FrontendLauncher
-    implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter {
+    implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter, RegisteringDirective {
     readonly supported: SupportedDirectives<DirectiveType> = ['LaunchTarget'];
     readonly defaultActionMappings = new Map<Launcher.Targets['identifier'], string>();
     readonly watchingTvActionMappings = new Map<Launcher.Targets['identifier'], string>();
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
         this.loadMappings()
+    }
+    async register(): Promise<void> {
+        this.fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
     }
     private loadMappings() {
         this.defaultActionMappings.set('amzn1.alexa-ask-target.shortcut.69247', 'TV Recording Playback')

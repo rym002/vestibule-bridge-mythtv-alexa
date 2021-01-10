@@ -1,13 +1,12 @@
 import { PlaybackStateReporter } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, StateEmitter } from "@vestibule-link/bridge-assistant-alexa";
-import { MythAlexaEventFrontend } from "./Frontend";
+import { MythAlexaEventFrontend, RegisteringDirective } from "./Frontend";
 
 type DirectiveType = PlaybackStateReporter.NamespaceType;
 const DirectiveName: DirectiveType = PlaybackStateReporter.namespace;
 export default class FrontendPlaybackState
-    implements StateEmitter, CapabilityEmitter {
+    implements StateEmitter, CapabilityEmitter, RegisteringDirective {
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaConnector.listenRefreshEvents(this)
         fe.mythEventEmitter.on('PLAY_CHANGED', message => {
             this.updatePlayingState(this.fe.eventDeltaId())
         });
@@ -23,6 +22,9 @@ export default class FrontendPlaybackState
         fe.mythEventEmitter.on('PLAY_STOPPED', message => {
             this.updateStoppedState(this.fe.eventDeltaId())
         });
+    }
+    async register(): Promise<void> {
+        this.fe.alexaConnector.listenRefreshEvents(this)
     }
     refreshState(deltaId: symbol): void {
         const promise = this.updatePlaybackState(deltaId);

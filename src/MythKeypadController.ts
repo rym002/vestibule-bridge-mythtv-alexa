@@ -1,7 +1,7 @@
 import { KeypadController } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from "@vestibule-link/bridge-assistant-alexa";
 import { SubType } from "@vestibule-link/iot-types";
-import { MythAlexaEventFrontend } from "./Frontend";
+import { MythAlexaEventFrontend, RegisteringDirective } from "./Frontend";
 import { keys } from 'lodash'
 type DirectiveType = KeypadController.NamespaceType;
 const DirectiveName: DirectiveType = KeypadController.namespace;
@@ -13,7 +13,7 @@ type KeyMapping = {
     [K in KeypadController.Keys]: string
 }
 export default class FrontendKeypadController
-    implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter {
+    implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter, RegisteringDirective {
     readonly supported: SupportedDirectives<DirectiveType> = ['SendKeystroke'];
     readonly mappings: KeyMapping = {
         'UP': 'UP',
@@ -29,7 +29,9 @@ export default class FrontendKeypadController
         'MORE': 'DETAILS'
     }
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
+    }
+    async register(): Promise<void> {
+        this.fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
     }
     refreshCapability(deltaId: symbol): void {
         this.fe.alexaConnector.updateCapability(DirectiveName, <KeypadController.Keys[]>keys(this.mappings), deltaId);

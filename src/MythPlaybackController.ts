@@ -1,7 +1,7 @@
 import { PlaybackController, PlaybackStateReporter, ChannelController } from '@vestibule-link/alexa-video-skill-types';
 import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from '@vestibule-link/bridge-assistant-alexa';
 import { SubType, EndpointState } from '@vestibule-link/iot-types';
-import { MythAlexaEventFrontend } from "./Frontend";
+import { MythAlexaEventFrontend, RegisteringDirective } from "./Frontend";
 
 type DirectiveType = PlaybackController.NamespaceType;
 const DirectiveName: DirectiveType = PlaybackController.namespace;
@@ -13,12 +13,15 @@ type Response = {
     }
 }
 export default class FrontendPlayback
-    implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter {
+    implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter, RegisteringDirective {
     readonly supported: SupportedDirectives<DirectiveType> = ['FastForward', 'Rewind', 'Next', 'Pause', 'Play', 'Previous', 'StartOver', 'Stop'];
 
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
     }
+    async register(): Promise<void> {
+        this.fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
+    }
+
     refreshCapability(deltaId: symbol): void {
         this.fe.alexaConnector.updateCapability(DirectiveName, this.supported, deltaId);
     }

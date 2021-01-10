@@ -7,7 +7,8 @@ import { createMockFrontend, getConnectionHandlerStub, getContextSandbox, getFro
 describe('MythKeypadController', function () {
     beforeEach(async function () {
         const frontend = await createMockFrontend('keypadController', this);
-        new Handler(frontend)
+        const handler = new Handler(frontend)
+        await handler.register()
     })
     context('directives', function () {
         context('SendKeystroke', function () {

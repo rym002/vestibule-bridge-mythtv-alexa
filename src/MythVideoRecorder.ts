@@ -2,7 +2,7 @@ import { VideoRecorder } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from "@vestibule-link/bridge-assistant-alexa";
 import { EndpointState, SubType } from "@vestibule-link/iot-types";
 import { masterBackend } from "mythtv-services-api";
-import { MythAlexaEventFrontend } from "./Frontend";
+import { MythAlexaEventFrontend, RegisteringDirective } from "./Frontend";
 
 type DirectiveType = VideoRecorder.NamespaceType;
 const DirectiveName: DirectiveType = VideoRecorder.namespace;
@@ -15,10 +15,12 @@ type Response = {
     state?: { [DirectiveName]?: SubType<EndpointState, DirectiveType> }
 }
 export default class MythTvRecorder
-    implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter {
+    implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter, RegisteringDirective {
     readonly supported: SupportedDirectives<DirectiveType> = ['CancelRecording', 'DeleteRecording', 'SearchAndRecord'];
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
+    }
+    async register(): Promise<void> {
+        this.fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
     }
     refreshCapability(deltaId: symbol): void {
         this.fe.alexaConnector.updateCapability(DirectiveName, true, deltaId);

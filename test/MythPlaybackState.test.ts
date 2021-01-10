@@ -9,7 +9,8 @@ describe('MythPlaybackState', function () {
         frontend.mythEventEmitter.emit('PLAY_STARTED', {
             SENDER: ''
         })
-        new Handler(frontend)
+        const handler = new Handler(frontend)
+        await handler.register()
     })
     context('MythtTV Events', function () {
         it('PLAY_CHANGED event should change state to PLAYING', async function () {

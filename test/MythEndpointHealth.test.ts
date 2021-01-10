@@ -10,7 +10,8 @@ describe('MythEndpointHealth', function () {
         frontend.mythEventEmitter.emit('CLIENT_CONNECTED', {
             SENDER: ''
         })
-        new Handler(frontend)
+        const handler = new Handler(frontend)
+        await handler.register()
     })
     context('MythtTV Events', function () {
         it('CLIENT_CONNECTED event should change state to OK', async function () {

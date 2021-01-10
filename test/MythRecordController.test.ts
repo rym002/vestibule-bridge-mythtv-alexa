@@ -7,7 +7,8 @@ import { convertDateParams, createBackendNock, createFrontendNock, createMockFro
 describe('MythRecordController', function () {
     beforeEach(async function () {
         const frontend = await createMockFrontend('record', this);
-        new Handler(frontend)
+        const handler = new Handler(frontend)
+        await handler.register()
     })
     context('directives', function () {
         it('StartRecording should send TOGGLERECORD action', async function () {

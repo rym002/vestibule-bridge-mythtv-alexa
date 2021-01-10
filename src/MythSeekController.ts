@@ -4,7 +4,7 @@ import { SubType } from "@vestibule-link/iot-types";
 import { duration } from 'moment';
 import { masterBackend, ApiTypes } from "mythtv-services-api";
 import { connect } from 'net';
-import { MythAlexaEventFrontend } from "./Frontend";
+import { MythAlexaEventFrontend, RegisteringDirective } from "./Frontend";
 
 
 type DirectiveType = SeekController.NamespaceType;
@@ -13,11 +13,13 @@ type Response = {
     payload: SeekController.ResponsePayload
 }
 export default class FrontendSeek
-    implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter {
+    implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter, RegisteringDirective {
     controlPort: number = 6546;
     readonly supported: SupportedDirectives<DirectiveType> = ['AdjustSeekPosition'];
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
+    }
+    async register(): Promise<void> {
+        this.fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
     }
     refreshCapability(deltaId: symbol): void {
         const promise = this.updateCapability(deltaId);

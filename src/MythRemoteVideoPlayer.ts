@@ -3,7 +3,7 @@ import { CapabilityEmitter, DirectiveHandlers, SupportedDirectives } from "@vest
 import { EndpointState, SubType } from "@vestibule-link/iot-types";
 import { sortBy } from 'lodash';
 import { ApiTypes, masterBackend } from "mythtv-services-api";
-import { MythAlexaEventFrontend, STATE_EVENT_TIMEOUT } from "./Frontend";
+import { MythAlexaEventFrontend, RegisteringDirective, STATE_EVENT_TIMEOUT } from "./Frontend";
 
 
 type DirectiveType = RemoteVideoPlayer.NamespaceType;
@@ -13,13 +13,15 @@ type Response = {
     state?: { [PlaybackStateReporter.namespace]?: SubType<EndpointState, PlaybackStateReporter.NamespaceType> }
 }
 export default class FrontendVideoPlayer
-    implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter {
+    implements SubType<DirectiveHandlers, DirectiveType>, CapabilityEmitter, RegisteringDirective {
     readonly backend = masterBackend;
     readonly supported: SupportedDirectives<DirectiveType> = ['SearchAndPlay'];
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
     }
 
+    async register(): Promise<void> {
+        this.fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
+    }
     refreshCapability(deltaId: symbol): void {
         this.fe.alexaConnector.updateCapability(DirectiveName, true, deltaId);
     }

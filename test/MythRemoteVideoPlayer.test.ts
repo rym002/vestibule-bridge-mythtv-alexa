@@ -9,7 +9,8 @@ import { createBackendNock, createFrontendNock, createMockFrontend, getConnectio
 describe('MythRemoteVideoPlayer', function () {
     beforeEach(async function () {
         const frontend = await createMockFrontend('remoteVideo', this);
-        new Handler(frontend)
+        const handler = new Handler(frontend)
+        await handler.register()
         frontend.alexaConnector.reportedState['Alexa.PlaybackStateReporter'] = {
             playbackState: {
                 state: 'PLAYING'

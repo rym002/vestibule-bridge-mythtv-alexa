@@ -135,7 +135,7 @@ export function toBool(data: boolean) {
 }
 
 export async function verifyActionDirective<NS extends Directive.Namespaces, N extends keyof Directive.NamedMessage[NS], DN extends keyof DirectiveResponse[NS]>(
-    frontend: MythAlexaEventFrontend, connectionStub:StubbedClass<mqtt.MqttClientConnection>, topicHandlerMap:TopicHandlerMap, 
+    frontend: MythAlexaEventFrontend, connectionStub: StubbedClass<mqtt.MqttClientConnection>, topicHandlerMap: TopicHandlerMap,
     namespace: NS, name: N,
     requestMessage: Directive.NamedMessage[NS][N] extends { payload: any } ? Directive.NamedMessage[NS][N]['payload'] : never,
     expectedMythtvActions: ActionMessage[],
@@ -170,7 +170,8 @@ export async function verifyActionDirective<NS extends Directive.Namespaces, N e
         }
     }
     const topicBase = getDirectiveTopicBase(frontend)
-    await emitTopic(topicHandlerMap,`${topicBase}#`, `${topicBase}${namespace}/${name}`, mqttRequest)
+    const topicName = `${topicBase}${namespace}/${name}`;
+    await emitTopic(topicHandlerMap, topicName, topicName, mqttRequest)
     expect(connectionStub.publish.calledWith(mqttRequest.replyTopic.sync, expectedResponse), 'Unexpected response')
     expect(frontendNock.isDone()).to.be.true
 }
@@ -210,7 +211,7 @@ export function getTopicHandlerMap(context: Mocha.Context): TopicHandlerMap {
     return context.test['topicHandlerMap']
 }
 
-export function getConnectionHandlerStub(context: Mocha.Context):StubbedClass<mqtt.MqttClientConnection>{
+export function getConnectionHandlerStub(context: Mocha.Context): StubbedClass<mqtt.MqttClientConnection> {
     return context.test['connection']
 }
 type PickType<O, T> = {

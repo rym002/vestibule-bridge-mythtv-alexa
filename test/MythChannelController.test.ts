@@ -10,7 +10,8 @@ describe('MythChannelController', function () {
     beforeEach(async function () {
         createVideoSourceListMock()
         const frontend = await createMockFrontend('channel', this);
-        new Handler(frontend)
+        const handler = new Handler(frontend)
+        await handler.register()
         frontend.alexaConnector.reportedState['Alexa.PlaybackStateReporter'] = {
             playbackState: {
                 state: 'PLAYING'

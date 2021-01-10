@@ -2,7 +2,7 @@ import { RecordController } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, DirectiveHandlers, StateEmitter, SupportedDirectives } from "@vestibule-link/bridge-assistant-alexa";
 import { EndpointState, SubType } from "@vestibule-link/iot-types";
 import { masterBackend, DvrService } from "mythtv-services-api";
-import { MythAlexaEventFrontend } from "./Frontend";
+import { MythAlexaEventFrontend, RegisteringDirective } from "./Frontend";
 
 
 type DirectiveType = RecordController.NamespaceType;
@@ -12,7 +12,7 @@ type Response = {
     state?: { [DirectiveName]?: SubType<EndpointState, DirectiveType> }
 }
 export default class FrontendRecord
-    implements SubType<DirectiveHandlers, DirectiveType>, StateEmitter, CapabilityEmitter {
+    implements SubType<DirectiveHandlers, DirectiveType>, StateEmitter, CapabilityEmitter, RegisteringDirective {
     private currentState?: {
         channel: number
         startTime: Date
@@ -20,7 +20,6 @@ export default class FrontendRecord
     readonly supported: SupportedDirectives<DirectiveType> = ['StartRecording', 'StopRecording'];
     constructor(readonly fe: MythAlexaEventFrontend) {
         const refreshStateBind = this.refreshState.bind(this);
-        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
         fe.mythEventEmitter.on('PLAY_CHANGED', message => {
             if (this.fe.isWatchingTv() && message.CHANID && message.STARTTIME) {
                 this.updateState('NOT_RECORDING', this.fe.eventDeltaId())
@@ -52,6 +51,9 @@ export default class FrontendRecord
             this.currentState = undefined
             this.updateState('NOT_RECORDING', this.fe.eventDeltaId())
         })
+    }
+    async register(): Promise<void> {
+        this.fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
     }
     refreshState(deltaId: symbol): void {
         const promise = this.updateRecordingStateFromStatus(deltaId);

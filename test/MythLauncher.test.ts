@@ -7,7 +7,8 @@ import { createMockFrontend, getConnectionHandlerStub, getContextSandbox, getFro
 describe('MythLauncher', function () {
     beforeEach(async function () {
         const frontend = await createMockFrontend('launcher', this);
-        new Handler(frontend)
+        const handler = new Handler(frontend)
+        await handler.register()
     })
     context('directives', function () {
         context('LaunchTarget', function () {

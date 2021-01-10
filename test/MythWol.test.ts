@@ -11,6 +11,7 @@ describe('MythWol', function () {
         this.currentTest['getMACStub'] = sandbox.stub(nodeArp, 'getMAC')
         const frontend = await createMockFrontend('remoteVideo', this);
         const handler = new Handler(frontend)
+        await handler.register()
         const checkNodeStub = sandbox.stub(handler, 'checkNodeArp')
         this.currentTest['checkNodeStub'] = checkNodeStub
     })

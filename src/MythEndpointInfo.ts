@@ -1,17 +1,19 @@
 import { InfoEmitter } from "@vestibule-link/bridge-assistant-alexa";
 import { EndpointInfo } from "@vestibule-link/iot-types";
 import { masterBackend } from "mythtv-services-api";
-import { getEndpointName, MANUFACTURER_NAME, MythAlexaEventFrontend } from "./Frontend";
+import { getEndpointName, MANUFACTURER_NAME, MythAlexaEventFrontend, RegisteringDirective } from "./Frontend";
 
 const ALEXA_FRIENDLY_NAME = "AlexaFriendlyName";
 
-export default class FrontendInfo implements InfoEmitter {
+export default class FrontendInfo implements InfoEmitter, RegisteringDirective {
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaConnector.listenRefreshEvents(this)
     }
     refreshInfo(deltaId: symbol): void {
         const promise = this.updateInfo(deltaId);
         this.fe.alexaConnector.watchDeltaUpdate(promise, deltaId);
+    }
+    async register(): Promise<void> {
+        this.fe.alexaConnector.listenRefreshEvents(this)
     }
 
     private async updateInfo(deltaId: symbol): Promise<void> {

@@ -108,7 +108,7 @@ export async function registerFrontends(): Promise<void> {
             const alexaConnector = await serviceProviderManager.getEndpointConnector('alexa', getEndpointName(fe), true)
             const alexaFe = new AlexaEventFrontend(alexaConnector, fe);
             const mergedFe: MythAlexaEventFrontend = mergeObject(alexaFe, fe);
-            buildEndpoint(mergedFe);
+            await buildEndpoint(mergedFe);
             await alexaConnector.refresh(Symbol())
         }
     })
@@ -116,10 +116,13 @@ export async function registerFrontends(): Promise<void> {
 }
 
 
-function buildEndpoint(fe: MythAlexaEventFrontend): void {
-    directiveBuilders.forEach((db) => {
-        db.createHandler(fe);
+async function buildEndpoint(fe: MythAlexaEventFrontend): Promise<void> {
+    const handlerRegistrations = directiveBuilders.map((db) => {
+        const handler = db.createHandler(fe);
+        return handler.register()
     });
+
+    await Promise.all(handlerRegistrations)
 }
 
 export function getEndpointName(fe: Frontend.Service): string {
@@ -129,60 +132,63 @@ export function getEndpointName(fe: Frontend.Service): string {
 export function getEndpointNameFromHostname(hostname: string) {
     return `${MANUFACTURER_NAME}_${hostname}`
 }
+export interface RegisteringDirective {
+    register(): Promise<void>
+}
 interface DirectiveBuilder {
-    createHandler(fe: MythAlexaEventFrontend): void;
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective;
 }
 
 const directiveBuilders: DirectiveBuilder[] = [{
-    createHandler(fe: MythAlexaEventFrontend): void {
-        new FrontendPlayback(fe);
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective {
+        return new FrontendPlayback(fe);
     }
 }, {
-    createHandler(fe: MythAlexaEventFrontend): void {
-        new FrontendRecord(fe);
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective {
+        return new FrontendRecord(fe);
     }
 }, {
-    createHandler(fe: MythAlexaEventFrontend): void {
-        new FrontendChannel(fe);
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective {
+        return new FrontendChannel(fe);
     }
 }, {
-    createHandler(fe: MythAlexaEventFrontend): void {
-        new FrontendPower(fe);
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective {
+        return new FrontendPower(fe);
     }
 }, {
-    createHandler(fe: MythAlexaEventFrontend): void {
-        new FrontendSeek(fe);
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective {
+        return new FrontendSeek(fe);
     }
 }, {
-    createHandler(fe: MythAlexaEventFrontend): void {
-        new FrontendPlaybackState(fe);
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective {
+        return new FrontendPlaybackState(fe);
     }
 }, {
-    createHandler(fe: MythAlexaEventFrontend): void {
-        new FrontendWol(fe);
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective {
+        return new FrontendWol(fe);
     }
 }, {
-    createHandler(fe: MythAlexaEventFrontend): void {
-        new FrontendHealth(fe);
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective {
+        return new FrontendHealth(fe);
     }
 }, {
-    createHandler(fe: MythAlexaEventFrontend): void {
-        new FrontendVideoPlayer(fe);
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective {
+        return new FrontendVideoPlayer(fe);
     }
 }, {
-    createHandler(fe: MythAlexaEventFrontend): void {
-        new FrontendLauncher(fe);
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective {
+        return new FrontendLauncher(fe);
     }
 }, {
-    createHandler(fe: MythAlexaEventFrontend): void {
-        new MythTvRecorder(fe);
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective {
+        return new MythTvRecorder(fe);
     }
 }, {
-    createHandler(fe: MythAlexaEventFrontend): void {
-        new FrontendInfo(fe);
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective {
+        return new FrontendInfo(fe);
     }
 }, {
-    createHandler(fe: MythAlexaEventFrontend): void {
-        new FrontendKeypad(fe);
+    createHandler(fe: MythAlexaEventFrontend): RegisteringDirective {
+        return new FrontendKeypad(fe);
     }
 }]

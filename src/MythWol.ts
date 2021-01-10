@@ -2,18 +2,20 @@ import { WakeOnLANController } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter } from "@vestibule-link/bridge-assistant-alexa";
 import * as nodeArp from 'node-arp';
 import { promisify } from "util";
-import { MythAlexaEventFrontend } from "./Frontend";
+import { MythAlexaEventFrontend, RegisteringDirective } from "./Frontend";
 import { spawn } from "child_process";
 
 type DirectiveType = WakeOnLANController.NamespaceType;
 const DirectiveName: DirectiveType = WakeOnLANController.namespace;
 
 export default class FrontendWol
-    implements CapabilityEmitter {
+    implements CapabilityEmitter, RegisteringDirective {
     readonly getMAC = promisify(nodeArp.getMAC);
     private readonly spawnCommands = ['arp', 'ping'];
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaConnector.listenRefreshEvents(this)
+    }
+    async register(): Promise<void> {
+        this.fe.alexaConnector.listenRefreshEvents(this)
     }
     refreshCapability(deltaId: symbol): void {
         const promise = this.updateCapability(deltaId);

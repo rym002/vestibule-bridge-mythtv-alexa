@@ -1,7 +1,7 @@
 import { ChannelController, PlaybackStateReporter } from '@vestibule-link/alexa-video-skill-types';
 import { CapabilityEmitter, DirectiveHandlers, StateEmitter, SupportedDirectives } from '@vestibule-link/bridge-assistant-alexa';
 import { EndpointState, ErrorHolder, SubType } from '@vestibule-link/iot-types';
-import { MythAlexaEventFrontend } from "./Frontend";
+import { MythAlexaEventFrontend, RegisteringDirective } from "./Frontend";
 import { ChannelLookup } from '@vestibule-link/bridge-mythtv';
 import { AffiliateChannelInfo } from '@vestibule-link/bridge-mythtv/dist/channel';
 type DirectiveType = ChannelController.NamespaceType;
@@ -15,7 +15,7 @@ type Response = {
 }
 
 export default class FrontendChannel
-    implements SubType<DirectiveHandlers, DirectiveType>, StateEmitter, CapabilityEmitter {
+    implements SubType<DirectiveHandlers, DirectiveType>, StateEmitter, CapabilityEmitter, RegisteringDirective {
     readonly supported: SupportedDirectives<DirectiveType> = ['ChangeChannel', 'SkipChannels'];
     readonly emptyChannel: ChannelController.Channel = {
         affiliateCallSign: null,
@@ -23,7 +23,6 @@ export default class FrontendChannel
         number: null
     }
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
         fe.mythEventEmitter.on('PLAY_CHANGED', message => {
             if (this.fe.isWatchingTv() && message.CHANID) {
                 const promise = this.updateStateFromChanId(Number(message.CHANID))
@@ -38,6 +37,9 @@ export default class FrontendChannel
         })
     }
 
+    async register(): Promise<void> {
+        this.fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
+    }
     refreshState(deltaId: symbol): void {
         const promise = this.updateStateAndChannel(deltaId);
         this.fe.alexaConnector.watchDeltaUpdate(promise, deltaId);

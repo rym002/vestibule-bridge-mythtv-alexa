@@ -14,8 +14,9 @@ describe('MythPowerController', function () {
             .reply(200, {
 
             })
-        new Handler(frontend)
-    })
+            const handler = new Handler(frontend)
+            await handler.register()
+        })
     context('MythtTV Events', function () {
         it('CLIENT_CONNECTED event should change state to ON', async function () {
             await verifyMythEventState(getContextSandbox(this),

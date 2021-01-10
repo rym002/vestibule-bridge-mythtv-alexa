@@ -1,7 +1,7 @@
 import { PowerController } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, DirectiveHandlers, StateEmitter, SupportedDirectives } from "@vestibule-link/bridge-assistant-alexa";
 import { EndpointState, SubType } from "@vestibule-link/iot-types";
-import { MythAlexaEventFrontend } from "./Frontend";
+import { MythAlexaEventFrontend, RegisteringDirective } from "./Frontend";
 
 type DirectiveType = PowerController.NamespaceType;
 const DirectiveName: DirectiveType = PowerController.namespace;
@@ -11,16 +11,18 @@ type Response = {
 }
 
 export default class FrontendPower
-    implements SubType<DirectiveHandlers, DirectiveType>, StateEmitter, CapabilityEmitter {
+    implements SubType<DirectiveHandlers, DirectiveType>, StateEmitter, CapabilityEmitter, RegisteringDirective {
     readonly supported: SupportedDirectives<DirectiveType> = [];
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
         fe.mythEventEmitter.on('CLIENT_CONNECTED', message => {
             this.updateOnState(this.fe.eventDeltaId())
         });
         fe.mythEventEmitter.on('CLIENT_DISCONNECTED', message => {
             this.updateOffState(this.fe.eventDeltaId())
         });
+    }
+    async register(): Promise<void> {
+        this.fe.alexaConnector.registerDirectiveHandler(DirectiveName, this);
     }
     refreshState(deltaId: symbol): void {
         const state = this.powerState();

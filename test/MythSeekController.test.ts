@@ -7,7 +7,8 @@ import { createBackendNock, createMockFrontend, getContextSandbox, getFrontend, 
 describe('MythSeekController', () => {
     beforeEach(async function () {
         const frontend = await createMockFrontend('seek', this);
-        new Handler(frontend)
+        const handler = new Handler(frontend)
+        await handler.register()
     })
     context('directives', () => {
         it('should AdjustSeekPosition')

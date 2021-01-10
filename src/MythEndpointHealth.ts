@@ -1,20 +1,22 @@
 import { EndpointHealth } from "@vestibule-link/alexa-video-skill-types";
 import { CapabilityEmitter, StateEmitter } from "@vestibule-link/bridge-assistant-alexa";
-import { MythAlexaEventFrontend } from "./Frontend";
+import { MythAlexaEventFrontend, RegisteringDirective } from "./Frontend";
 
 type DirectiveType = EndpointHealth.NamespaceType;
 const DirectiveName: DirectiveType = EndpointHealth.namespace;
 export default class FrontendHealth
-    implements StateEmitter, CapabilityEmitter {
+    implements StateEmitter, CapabilityEmitter, RegisteringDirective {
 
     constructor(readonly fe: MythAlexaEventFrontend) {
-        fe.alexaConnector.listenRefreshEvents(this)
         fe.mythEventEmitter.on('CLIENT_CONNECTED', message => {
             this.updateConnectedState(this.fe.eventDeltaId())
         });
         fe.mythEventEmitter.on('CLIENT_DISCONNECTED', message => {
             this.updateDisconnectedState(this.fe.eventDeltaId())
         });
+    }
+    async register(): Promise<void> {
+        this.fe.alexaConnector.listenRefreshEvents(this)
     }
     refreshState(deltaId: symbol): void {
         const state = this.endpointState();
