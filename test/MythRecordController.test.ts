@@ -88,7 +88,10 @@ describe('MythRecordController', function () {
             await verifyMythEventState(getContextSandbox(this),
                 frontend, 'SCHEDULER_RAN', {
                 SENDER: ''
-            }, RecordController.namespace, 'RecordingState', 'RECORDING', true)
+            }, RecordController.namespace, 'RecordingState', 'RECORDING',
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this),
+                true)
         })
         it('REC_STARTED should update ChanIdRequest StartTime if watching CHANID', async function () {
             const frontend = getFrontend(this);
@@ -124,7 +127,10 @@ describe('MythRecordController', function () {
             await verifyMythEventState(getContextSandbox(this),
                 frontend, 'SCHEDULER_RAN', {
                 SENDER: ''
-            }, RecordController.namespace, 'RecordingState', 'RECORDING', true)
+            }, RecordController.namespace, 'RecordingState', 'RECORDING',
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this),
+                true)
         })
         it('REC_STARTED should not update ChanIdRequest StartTime if different CHANID', async function () {
             const frontend = getFrontend(this);
@@ -159,7 +165,10 @@ describe('MythRecordController', function () {
             await verifyMythEventState(getContextSandbox(this),
                 frontend, 'SCHEDULER_RAN', {
                 SENDER: ''
-            }, RecordController.namespace, 'RecordingState', 'RECORDING', true)
+            }, RecordController.namespace, 'RecordingState', 'RECORDING',
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this),
+                true)
         })
         it('PLAY_CHANGED should emit NOT_RECORDING', async function () {
             const frontend = getFrontend(this);
@@ -169,7 +178,10 @@ describe('MythRecordController', function () {
                 SENDER: '',
                 CHANID: '202',
                 STARTTIME: startTime
-            }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING', false)
+            }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING',
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this),
+                false)
         })
         it('REC_STARTED should emit NOT_RECORDING', async function () {
             const frontend = getFrontend(this);
@@ -184,14 +196,19 @@ describe('MythRecordController', function () {
                 SENDER: '',
                 CHANID: '202',
                 STARTTIME: startTime
-            }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING', true)
+            }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING',
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this),
+                true)
         })
         it('LIVETV_ENDED should emit NOT_RECORDING', async function () {
             const frontend = getFrontend(this);
             await verifyMythEventState(getContextSandbox(this),
                 frontend, 'LIVETV_ENDED', {
                 SENDER: ''
-            }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
+            }, RecordController.namespace, 'RecordingState', 'NOT_RECORDING',
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this))
         })
     })
     context('Alexa Shadow', function () {
@@ -238,7 +255,9 @@ describe('MythRecordController', function () {
                                 }
                             })
                         await verifyRefreshState(getContextSandbox(this),
-                            getFrontend(this), RecordController.namespace, 'RecordingState', 'RECORDING')
+                            getFrontend(this), RecordController.namespace, 'RecordingState', 'RECORDING',
+                            getConnectionHandlerStub(this),
+                            getTopicHandlerMap(this))
                     })
                     it('should emit NOT_RECORDING when RecGroup==LiveTV', async function () {
                         createBackendNock('Dvr')
@@ -255,7 +274,9 @@ describe('MythRecordController', function () {
                                 }
                             })
                         await verifyRefreshState(getContextSandbox(this),
-                            getFrontend(this), RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
+                            getFrontend(this), RecordController.namespace, 'RecordingState', 'NOT_RECORDING',
+                            getConnectionHandlerStub(this),
+                            getTopicHandlerMap(this))
                     })
                 })
                 context('not watchingTv', function () {
@@ -267,7 +288,9 @@ describe('MythRecordController', function () {
                     })
                     it('should emit NOT_RECORDING', async function () {
                         await verifyRefreshState(getContextSandbox(this),
-                            getFrontend(this), RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
+                            getFrontend(this), RecordController.namespace, 'RecordingState', 'NOT_RECORDING',
+                            getConnectionHandlerStub(this),
+                            getTopicHandlerMap(this))
                     })
                 })
             })
@@ -280,7 +303,9 @@ describe('MythRecordController', function () {
                 })
                 it('should emit NOT_RECORDING', async function () {
                     await verifyRefreshState(getContextSandbox(this),
-                        getFrontend(this), RecordController.namespace, 'RecordingState', 'NOT_RECORDING')
+                        getFrontend(this), RecordController.namespace, 'RecordingState', 'NOT_RECORDING',
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this))
                 })
             })
         })

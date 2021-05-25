@@ -253,7 +253,10 @@ describe('MythChannelController', function () {
                     getFrontend(this), 'PLAY_CHANGED', {
                     SENDER: '',
                     CHANID: '1150'
-                }, ChannelController.namespace, 'channel', currentChannel)
+                }, ChannelController.namespace, 'channel', currentChannel,
+                    getConnectionHandlerStub(this),
+                    getTopicHandlerMap(this)
+                )
             })
         })
         context('Exit Watching', function () {
@@ -265,7 +268,9 @@ describe('MythChannelController', function () {
                     affiliateCallSign: null,
                     callSign: null,
                     number: null
-                })
+                },
+                    getConnectionHandlerStub(this),
+                    getTopicHandlerMap(this))
             })
         })
     })
@@ -274,7 +279,9 @@ describe('MythChannelController', function () {
             stubCurrentChannelInfo(this)
             createFrontendChannelNock(getFrontend(this))
             await (<any>getFrontend(this)).initFromState()
-            await verifyRefreshState(getContextSandbox(this), getFrontend(this), ChannelController.namespace, 'channel', currentChannel)
+            await verifyRefreshState(getContextSandbox(this), getFrontend(this), ChannelController.namespace, 'channel', currentChannel,
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this))
         })
         it('refreshCapability should emit powerState', async function () {
             await verifyRefreshCapability(getContextSandbox(this), getFrontend(this), false, ChannelController.namespace, ['channel'])

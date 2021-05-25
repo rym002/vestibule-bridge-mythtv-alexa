@@ -5,7 +5,7 @@ import 'mocha';
 import * as nock from 'nock';
 import * as nodeArp from 'node-arp';
 import { getEndpointNameFromHostname, registerFrontends } from '../src/Frontend';
-import { getContextSandbox } from './MockHelper';
+import { acceptStateUpdate, getConnectionHandlerStub, getContextSandbox, getTopicHandlerMap } from './MockHelper';
 const chaiAsPromised = require('chai-as-promised')
 
 use(chaiAsPromised)
@@ -78,7 +78,8 @@ describe('Frontend', () => {
             })
     })
 
-    it('should create', async () => {
+    it('should create', async function () {
+        acceptStateUpdate(getConnectionHandlerStub(this), getEndpointNameFromHostname('hostgood'), getTopicHandlerMap(this))
         await loadFrontends();
         await registerFrontends()
         const good = await serviceProviderManager.getEndpointConnector('alexa', getEndpointNameFromHostname('hostgood'), false)

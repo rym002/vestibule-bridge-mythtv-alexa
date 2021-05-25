@@ -1,7 +1,7 @@
 import { EndpointHealth } from '@vestibule-link/alexa-video-skill-types';
 import 'mocha';
 import Handler from '../src/MythEndpointHealth';
-import { createMockFrontend, getContextSandbox, getFrontend, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
+import { createMockFrontend, getConnectionHandlerStub, getContextSandbox, getFrontend, getTopicHandlerMap, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
 
 
 describe('MythEndpointHealth', function () {
@@ -18,13 +18,17 @@ describe('MythEndpointHealth', function () {
             await verifyMythEventState(getContextSandbox(this),
                 getFrontend(this), 'CLIENT_CONNECTED', {
                 SENDER: ''
-            }, EndpointHealth.namespace, 'connectivity', { value: 'OK' })
+            }, EndpointHealth.namespace, 'connectivity', { value: 'OK' },
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this))
         })
         it('CLIENT_DISCONNECTED event should change state to UNREACHABLE', async function () {
             await verifyMythEventState(getContextSandbox(this),
                 getFrontend(this), 'CLIENT_DISCONNECTED', {
                 SENDER: ''
-            }, EndpointHealth.namespace, 'connectivity', { value: 'UNREACHABLE' })
+            }, EndpointHealth.namespace, 'connectivity', { value: 'UNREACHABLE' },
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this))
         })
     })
     context('Alexa Shadow', function () {
@@ -34,14 +38,18 @@ describe('MythEndpointHealth', function () {
                     SENDER: ''
                 })
                 await verifyRefreshState(getContextSandbox(this),
-                    getFrontend(this), EndpointHealth.namespace, 'connectivity', { value: 'OK' })
+                    getFrontend(this), EndpointHealth.namespace, 'connectivity', { value: 'OK' },
+                    getConnectionHandlerStub(this),
+                    getTopicHandlerMap(this))
             })
             it('should emit UNREACHABLE when failed response', async function () {
                 getFrontend(this).mythEventEmitter.emit('CLIENT_DISCONNECTED', {
                     SENDER: ''
                 })
                 await verifyRefreshState(getContextSandbox(this),
-                    getFrontend(this), EndpointHealth.namespace, 'connectivity', { value: 'UNREACHABLE' })
+                    getFrontend(this), EndpointHealth.namespace, 'connectivity', { value: 'UNREACHABLE' },
+                    getConnectionHandlerStub(this),
+                    getTopicHandlerMap(this))
             })
         })
         it('refreshCapability should emit powerState', async function () {

@@ -1,7 +1,7 @@
 import { PlaybackStateReporter } from '@vestibule-link/alexa-video-skill-types';
 import 'mocha';
 import Handler from '../src/MythPlaybackState';
-import { createFrontendNock, createMockFrontend, getContextSandbox, getFrontend, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
+import { createFrontendNock, createMockFrontend, getConnectionHandlerStub, getContextSandbox, getFrontend, getTopicHandlerMap, verifyMythEventState, verifyRefreshCapability, verifyRefreshState } from './MockHelper';
 
 describe('MythPlaybackState', function () {
     beforeEach(async function () {
@@ -17,31 +17,41 @@ describe('MythPlaybackState', function () {
             await verifyMythEventState(getContextSandbox(this),
                 getFrontend(this), 'PLAY_CHANGED', {
                 SENDER: ''
-            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'PLAYING' })
+            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'PLAYING' },
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this))
         })
         it('PLAY_STARTED event should change state to PLAYING', async function () {
             await verifyMythEventState(getContextSandbox(this),
                 getFrontend(this), 'PLAY_STARTED', {
                 SENDER: ''
-            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'PLAYING' })
+            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'PLAYING' },
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this))
         })
         it('PLAY_UNPAUSED event should change state to PLAYING', async function () {
             await verifyMythEventState(getContextSandbox(this),
                 getFrontend(this), 'PLAY_UNPAUSED', {
                 SENDER: ''
-            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'PLAYING' })
+            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'PLAYING' },
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this))
         })
         it('PLAY_PAUSED event should change state to PAUSED', async function () {
             await verifyMythEventState(getContextSandbox(this),
                 getFrontend(this), 'PLAY_PAUSED', {
                 SENDER: ''
-            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'PAUSED' })
+            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'PAUSED' },
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this))
         })
         it('PLAY_STOPPED event should change state to STOPPED', async function () {
             await verifyMythEventState(getContextSandbox(this),
                 getFrontend(this), 'PLAY_STOPPED', {
                 SENDER: ''
-            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'STOPPED' })
+            }, PlaybackStateReporter.namespace, 'playbackState', { state: 'STOPPED' },
+                getConnectionHandlerStub(this),
+                getTopicHandlerMap(this))
         })
     })
     context('Alexa Shadow', function () {
@@ -68,7 +78,9 @@ describe('MythPlaybackState', function () {
                             }
                         })
                     await verifyRefreshState(getContextSandbox(this),
-                        getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', { state: 'PAUSED' })
+                        getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', { state: 'PAUSED' },
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this))
                 })
                 it('should emit PLAYING when watching and playspeed != 0', async function () {
                     const feNock = createFrontendNock(getFrontend(this).hostname())
@@ -85,7 +97,9 @@ describe('MythPlaybackState', function () {
                             }
                         })
                     await verifyRefreshState(getContextSandbox(this),
-                        getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', { state: 'PLAYING' })
+                        getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', { state: 'PLAYING' },
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this))
                 })
             })
             context('Not watching', function () {
@@ -97,7 +111,9 @@ describe('MythPlaybackState', function () {
                 })
                 it('should emit STOPPED when not watching', async function () {
                     await verifyRefreshState(getContextSandbox(this),
-                        getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', { state: 'STOPPED' })
+                        getFrontend(this), PlaybackStateReporter.namespace, 'playbackState', { state: 'STOPPED' },
+                        getConnectionHandlerStub(this),
+                        getTopicHandlerMap(this))
                 })
             })
         })

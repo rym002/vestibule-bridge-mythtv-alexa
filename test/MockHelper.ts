@@ -59,7 +59,7 @@ const encoder = new TextEncoder()
 async function emitTopic(topicHandlerMap: TopicHandlerMap, listenTopic: string, topic: string, req: any) {
     const topicHandler = topicHandlerMap[listenTopic]
     if (topicHandler) {
-        await topicHandler(topic, encoder.encode(JSON.stringify(req)))
+        await topicHandler(topic, encoder.encode(JSON.stringify(req)), false, mqtt.QoS.AtMostOnce, false)
     } else {
         throw new Error(`Topic Handler not found for ${listenTopic}`)
     }
@@ -102,7 +102,9 @@ export async function verifyRefreshCapability<NS extends keyof EndpointCapabilit
 export async function verifyState<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(
     sandbox: SinonSandbox, frontend: MythAlexaEventFrontend,
     expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>,
-    triggerFunction: Function) {
+    triggerFunction: Function, connection: StubbedClass<mqtt.MqttClientConnection>, topicHandlerMap: TopicHandlerMap) {
+    const endpointId = getEndpointName(frontend)
+    acceptStateUpdate(connection, endpointId, topicHandlerMap)
     const updateStateSpy = sandbox.spy(frontend.alexaConnector, 'updateState')
     triggerFunction()
     await frontend.alexaConnector.completeDeltaState(frontend.eventDeltaId())
@@ -111,22 +113,24 @@ export async function verifyState<NS extends keyof EndpointState, N extends keyo
 
 export async function verifyRefreshState<NS extends keyof EndpointState, N extends keyof EndpointState[NS]>(
     sandbox: SinonSandbox, frontend: MythAlexaEventFrontend,
-    expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>) {
+    expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>,
+    connection: StubbedClass<mqtt.MqttClientConnection>, topicHandlerMap: TopicHandlerMap) {
     await verifyState(sandbox, frontend, expectedNamespace, expectedName, expectedState, () => {
         frontend.alexaConnector.refreshState(frontend.eventDeltaId())
-    })
+    },connection,topicHandlerMap)
 }
 
 export async function verifyMythEventState<NS extends keyof EndpointState, N extends keyof EndpointState[NS], T extends keyof EventMapping, P extends EventMapping[T]>(
     sandbox: SinonSandbox, frontend: MythAlexaEventFrontend, eventType: T, eventMessage: P,
-    expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>, emitBackend?: boolean) {
+    expectedNamespace: NS, expectedName: N, expectedState: SubType<SubType<EndpointState, NS>, N>,
+    connection: StubbedClass<mqtt.MqttClientConnection>, topicHandlerMap: TopicHandlerMap, emitBackend?: boolean) {
     await verifyState(sandbox, frontend, expectedNamespace, expectedName, expectedState, () => {
         if (emitBackend) {
             frontend.masterBackendEmitter.emit(eventType, eventMessage)
         } else {
             frontend.mythEventEmitter.emit(eventType, eventMessage)
         }
-    })
+    },connection,topicHandlerMap)
 }
 export function toBool(data: boolean) {
     return {
@@ -172,7 +176,7 @@ export async function verifyActionDirective<NS extends Directive.Namespaces, N e
     const topicBase = getDirectiveTopicBase(frontend)
     const topicName = `${topicBase}${namespace}/${name}`;
     await emitTopic(topicHandlerMap, topicName, topicName, mqttRequest)
-    expect(connectionStub.publish.calledWith(mqttRequest.replyTopic.sync, expectedResponse), 'Unexpected response')
+    expect(connectionStub.publish.calledWith(mqttRequest.replyTopic.sync, expectedResponse as Record<string, any>, mqtt.QoS.AtMostOnce, false), 'Unexpected response')
     expect(frontendNock.isDone()).to.be.true
 }
 
@@ -231,9 +235,32 @@ function getDirectiveTopicBase(fe: Frontend.Service) {
     return `vestibule-bridge/${clientId}/alexa/endpoint/${endpointId}/directive/`
 }
 
+function getUpdateTopic(endpointId: string) {
+    return `$aws/things/${clientId}/shadow/name/${endpointId}/update`
+}
 
+function getShadowDocumentsTopic(endpointId: string) {
+    return `$aws/things/${clientId}/shadow/name/${endpointId}/update/documents`
+}
+
+export function acceptStateUpdate(connection: StubbedClass<mqtt.MqttClientConnection>,
+    endpointId: string,
+    topicHandlerMap: TopicHandlerMap) {
+    const updateTopic = getUpdateTopic(endpointId)
+    connection.publish.callsFake((topic, payload, qos, retain) => {
+        if (topic === updateTopic) {
+            const message = JSON.parse(payload as string)
+            const clientToken = message.clientToken
+            const updateShadowTopic = getShadowDocumentsTopic(endpointId)
+            emitTopic(topicHandlerMap, updateShadowTopic, updateShadowTopic, {
+                clientToken
+            })
+        }
+        return Promise.resolve({})
+    })
+}
 interface TopicHandlerMap {
-    [index: string]: (topic: string, payload: ArrayBuffer) => void | Promise<void>
+    [index: string]: (topic: string, payload: ArrayBuffer, dup: boolean, qos: mqtt.QoS, retain: boolean) => void | Promise<void>
 }
 
 type StubbedClass<T> = SinonStubbedInstance<T> & T;
@@ -253,6 +280,9 @@ beforeEach(function () {
 
     const connectionStub = createSinonStubInstance(sandbox, mqtt.MqttClientConnection)
     connectionStub.publish.returns(Promise.resolve({}))
+    connectionStub.publish.callsFake((t, p, q, r) => {
+        return Promise.resolve({})
+    })
     connectionStub.subscribe.callsFake((topic, qos, on_message) => {
         topicHandlerMap[topic] = on_message
         return Promise.resolve({
